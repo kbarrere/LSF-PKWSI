@@ -1,0 +1,243 @@
+# In parallel:
+Threads_Nbr=4
+#######################################################################################
+# LINE EXTRACTION AND PREPROCESSING
+#######################################################################################
+# Require: textfeats
+# git clone https://github.com/mauvilsa/textfeats.git
+# Used version: git checkout 2bc1d6983baed2695168f0b6eabc9aade8c1d1cd
+
+# Config for the "textfeats" software
+textFeats_cfg='
+TextFeatExtractor: {
+  verbose    = false;              // Whether to be verbose
+  procimgs   = true;
+  deslope    = true;               // Whether to do automatic desloping of the text
+  deslant    = true;               // Whether to do automatic deslanting of the text
+  type       = "raw";              // Type of feature to extract, either "dotm" or "raw"
+  format     = "img";              // Output features format, either "htk", "ascii" or "img"
+  stretch    = true;               // Whether to do contrast stretching
+  enh_win    = 30;                 // Window size in pixels for local enhancement
+  enh_prm    = 0.1;                // Sauvola enhancement parameter
+  //enh_prm   = [ 0.05, 0.2, 0.5 ];  // 3 independent enhancements, each in a color channel
+  normheight = 64;                // Normalize image heights
+  momentnorm = true;               // Global line vertical moment normalization
+  fpgram  cat   = false;              // Whether to compute the features parallelograms
+  fcontour   = true;               // Whether to compute the features surrounding polygon
+  //fcontour_dilate = 0;
+  padding    = 10;                 // Padding in pixels to add to the left and right
+}';
+
+# Extracting text line images using the info in the XML PAGE files
+mkdir Lines-Processed
+# for i in Test/*.xml; do N=`basename $i .xml`; textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
+#for i in Test/*.xml; do textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
+for i in Pages-To-Process/*.xml; do textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
+# In parallel:
+textFeats -T $Threads_Nbr --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed Pages-To-Process/*.xml 
+
+
+#######################################################################################
+# DECODING AND OBTAINING CONFIDENCE MATRICES OF CORRESPONDING LINE IMAGES
+#######################################################################################
+# Creating list of available line images
+#ls Lines-Processed/*.png > test_imgs.lst
+# If there is a lot of images:
+find Lines-Processed/ -name "*.png" -print0 | xargs -0 ls > test_imgs.lst
+
+# Obtaining confMats
+# Require: laia-netout from Laia Tool Kit
+# Batch size of 1 because of alignment problems with padding
+laia-netout \
+  --batch_size "1" \
+  --batcher_center_patch false \
+  --batcher_cache_gpu 1 \
+  --log_level info \
+  --log_also_to_stderr info \
+  --output_format matrix \
+  --prior Models/priors.txt --prior_alpha 0.3 \
+  Models/model.t7 test_imgs.lst - |
+  copy-matrix "ark,t:-" "ark,scp:ConfMats.ark,ConfMats.scp"
+
+
+#######################################################################################
+# OBTAINING CHARACTER LATTICES AND CONVERTING THEM TO SLF FORMAT
+#######################################################################################
+# Require: latgen-faster-mapped and int2sym.pl from kaldi
+#latgen-faster-mapped --verbose=2 --allow-partial=true \
+#                     --acoustic-scale=1.16256062048 --max-active=2007483647 \
+#                     --beam=15 --lattice-beam=12 Models/train/new.mdl \ 
+#       #Models/test/graph/HCLG.fst scp:ConfMats.scp "ark:|gzip -c > lat.gz"
+#       Models/test/graph/HCLG.fst scp:ConfMats.scp "ark,scp:lat.ark,lat.scp" \
+#       ark,t:hypotheses.dat 2>LOG-Lats
+       
+latgen-faster-mapped --verbose=2 --allow-partial=true \
+                     --acoustic-scale=1.16256062048 --max-active=2007483647 \
+                     --beam=15 --lattice-beam=12 \
+                     Models/train/new.mdl \
+                     Models/test/graph/HCLG.fst scp:ConfMats.scp "ark,scp:lat.ark,lat.scp" \
+                     ark,t:hypotheses.dat 2>LOG-Lats
+
+# In parallel
+Lines_Nbr=$(cat ConfMats.scp | wc -l)
+Lines_Per_File=$(expr $Lines_Nbr / $Threads_Nbr + 1)
+split -l $Lines_Per_File --additional-suffix=".scp" ConfMats.scp ConfMats-Splitted-
+for f in ./ConfMats-Splitted-*.scp; do
+i=$(echo $f | cut -c 21- | rev | cut -c 5- | rev);
+latgen-faster-mapped --verbose=2 --allow-partial=true \
+                     --acoustic-scale=1.16256062048 --max-active=2007483647 \
+                     --beam=15 --lattice-beam=12 \
+                     Models/train/new.mdl \
+                     Models/test/graph/HCLG.fst scp:$f "ark,scp:lat-$i.ark,lat-$i.scp" \
+                     ark,t:hypotheses-$i.dat 2>LOG-Lats-$i &
+done;
+wait;
+lattice-copy "ark:cat lat-*.ark|" "ark,scp:lat.ark,lat.scp"
+> hypotheses.dat;
+for f in hypotheses-*.dat; do
+cat $f >> hypotheses.dat
+done
+
+# Move splitted data to tmp dir.
+mkdir tmp
+mv ConfMats-Splitted-*.ark tmp/
+mv ConfMats-Splitted-*.scp tmp/
+mv hypotheses-*.dat tmp/
+mv LOG-Lats-* tmp/
+
+
+
+# First best hypotheses from the CRNN
+cat hypotheses.dat | int2sym.pl -f 2- Models/test/graph/words.txt > hypotheses_crnn.txt
+
+# Require: lattice-char-to-word
+# git clone https://github.com/jpuigcerver/lattice-char-to-word
+# Require: int2sym.pl and convert_slf.pl from kaldi
+#mkdir SLFs;
+#cat lat.scp | 
+#while read L; do
+#  echo $L;
+#  timeout -s 9 10s lattice-char-to-word --beam=15 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" scp:<(echo $L) ark:word.ark ||
+#  lattice-char-to-word --beam=5 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" scp:<(echo $L) ark:word.ark;
+#  awk '{print $2,gensub(/_/," ","g",$1)}' pseudowords.txt | int2sym.pl -f 2- Models/test/graph/words.txt | awk '{cad=""; for (i=2;i<=NF;i++) cad=cad""$i; print cad"\t"$1}' > pseudowords_t.txt;
+#  lattice-copy ark:word.ark ark,t:- | int2sym.pl -f 3 pseudowords_t.txt | 
+#  convert_slf.pl - SLFs; 
+#done
+
+# Strange parsing when doing scp:<(echo $L), we get:
+# 'scp:<(echo M_Aidenbach_008-01_0051.line_1490004205809_88' 'lat.ark:46)'
+mkdir SLFs;
+> pseudowords.txt; # The file need to be initialized :/
+cat lat.scp | 
+while read L; do
+  echo $L;
+  timeout -s 9 10s lattice-char-to-word --beam=15 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:word.ark" ||
+  lattice-char-to-word --beam=5 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:word.ark";
+  awk '{print $2,gensub(/_/," ","g",$1)}' pseudowords.txt | int2sym.pl -f 2- Models/test/graph/words.txt | awk '{cad=""; for (i=2;i<=NF;i++) cad=cad""$i; print cad"\t"$1}' > pseudowords_t.txt;
+  lattice-copy ark:word.ark ark,t:- | int2sym.pl -f 3 pseudowords_t.txt | 
+  convert_slf.pl - SLFs; 
+done
+
+# In parallel ?
+
+#------------------------------------------------------------------------------#
+#                          PARALLELIZATION FUNCTIONS 
+#   from https://github.com/lquirosd/SomeNotes/blob/master/bash_parallel.md
+#                            Thank you Lorenzo :)
+#------------------------------------------------------------------------------#
+OpenFIFO(){
+    mkfifo pipe-$$
+    exec 5<>pipe-$$
+    rm pipe-$$
+    local i=$1
+    for((;i>0;i--)); do
+        printf %s 000 >&5
+    done
+}
+
+RunLOCKED(){
+    local x
+    read -u 5 -n 3 x && ((0==x)) || exit $x
+    (
+    "$@"
+    printf '%.3d' $? >&5
+    )&
+}
+
+OpenFIFO $Threads_Nbr;
+> pseudowords.txt; # The file need to be initialized :/
+mkdir SLFs;
+mkdir chars2words;
+cat lat.scp | 
+while read L; do
+  echo $L;
+  ToRUN(){
+    lineID=$(echo $L | awk -F" " '{print $1}' | tr , _);
+    outfile=chars2words/words-$lineID.ark;
+    pseudowords=chars2words/pseudowords-$lineID.txt;
+    pseudowords_t=chars2words/pseudowords_t-$lineID.txt;
+    tempfile=chars2words/tempfile-$lineID.txt;
+    timeout -s 9 10s lattice-char-to-word --beam=15 --save-symbols=$pseudowords --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:$outfile" ||
+    lattice-char-to-word --beam=5 --save-symbols=$pseudowords --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:$outfile";
+    awk '{print $2,gensub(/_/," ","g",$1)}' $pseudowords | int2sym.pl -f 2- Models/test/graph/words.txt | awk '{cad=""; for (i=2;i<=NF;i++) cad=cad""$i; print cad"\t"$1}' > $pseudowords_t;
+    lattice-copy "ark:$outfile" ark,t:- | int2sym.pl -f 3 $pseudowords_t | 
+    convert_slf.pl - SLFs;
+  }
+  RunLOCKED ToRUN
+done;
+wait;
+
+#######################################################################################
+# PRODUCING INDEX FROM CHARACTER LATTICES
+#######################################################################################
+# Require: WordGraph2Index 
+# git clone https://github.com/PRHLT/WordGraph2Index.git
+
+# Obtaining raw index
+for f in SLFs/*.lat.gz; do F=$(basename $f .lat.gz); echo $F 1>&2; WordGraph2Index -i $f -p 0.0 -s 1.0 -t 100.0 -d 1.0 -z w | awk -v ln=$F '$0!~/^#|<s>|<\/s>|!NULL/{print ln,$2,$3,$4,$5,$6}'; done | gzip -9 -c > index_raw.idx.gz
+
+# Filtering out the index for evaluation: take into account the keywords and the line IDs 
+zcat index_raw.idx.gz | awk 'BEGIN{while (getline < "INF/keywords_test.lst" > 0) W[$1]=""}{if ($2 in W) print}' > index_test.idx
+
+awk 'BEGIN{while (getline < "INF/ID_test.lst" > 0) L[$1]=""; while (getline < "index_test.idx" > 0) {k=$1"%"$2; S[k]=$3; G[k]=0}}{if ($2 in L) for (i=7;i<=NF;i++) if (length($i)>1) { k=$2"%"$i; G[k]=1; if (!(k in S)) S[k]=-1.0; } }END{for (k in S) print gensub("%"," ","g",k),G[k],S[k]}' INF/GT.txt > data_test.dat
+
+# Same thing but at the page level
+#awk 'BEGIN{while (getline < "INF/ID_test-page.lst" > 0) L[$1]=""; while (getline < "index_test-page.idx" > 0) {k=$1"%"$2; S[k]=$3; G[k]=0}}{if ($2 in L) for (i=7;i<=NF;i++) if (length($i)>1) { k=$2"%"$i; G[k]=1; if (!(k in S)) S[k]=-1.0; } }END{for (k in S) print gensub("%"," ","g",k),G[k],S[k]}' INF/GT-page.txt > data_test-page.dat
+
+# Evaluation
+# Require: kws-assessment
+# git clone https://github.com/PRHLT/KwsEvalTool.git
+
+kws-assessment -a -m -t -s data_test.dat -w INF/keywords_test.lst -l 16376
+# INFO: Total number of events registered: 239606
+# INFO: Total number of different read line IDs: 16376
+# INFO: Total number of different read words: 5725
+# INFO: Total number of OOV words: 178
+# INFO: Estimated number of missing no-relevant events (OffSet) = 93512994
+#          MAP = 0.679326116 ( #Rel-Wrds = 5107 )
+# INFO: Total number of relevant events registered: 22898
+#           AP = 0.721348244
+#           RP = 0.715739366 ( min|Rec-Prc| = 0.000000 )
+#        F1max = 0.732939124 ( thrs = 0.387086 )
+#        RCmax = 0.882653507
+#        PRres = 0.085307637
+#       CERmin = 0.000115698 ( thrs = 0.657175 )
+#    CER(>1.0) = 0.000244239
+
+# Same thing but at the page level
+#kws-assessment -a -m -t -s data_test-page.dat -w INF/keywords_test.lst -l 91
+# INFO: Total number of events registered: 83662
+# INFO: Total number of different read line IDs: 91
+# INFO: Total number of different read words: 5725
+# INFO: Total number of OOV words: 178
+# INFO: Estimated number of missing no-relevant events (OffSet) = 437313
+#          MAP = 0.731014067 ( #Rel-Wrds = 5107 )
+# INFO: Total number of relevant events registered: 12439
+#           AP = 0.731661220
+#           RP = 0.709462175 ( min|Rec-Prc| = 0.000000 )
+#        F1max = 0.721163361 ( thrs = 0.249609 )
+#        RCmax = 0.911166492
+#        PRres = 0.137286965
+#       CERmin = 0.011789433 ( thrs = 0.598468 )
+#    CER(>1.0) = 0.023876386
+

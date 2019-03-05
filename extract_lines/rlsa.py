@@ -1,3 +1,6 @@
+# Code taken from https://github.com/Vasistareddy/python-rlsa
+# And modified to mak it work with python 2.7
+
 import numpy
 
 def iteration(image, value):

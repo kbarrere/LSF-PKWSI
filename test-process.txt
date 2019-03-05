@@ -1,5 +1,8 @@
 # In parallel:
 Threads_Nbr=4
+
+
+
 #######################################################################################
 # LINE EXTRACTION AND PREPROCESSING
 #######################################################################################
@@ -29,10 +32,13 @@ TextFeatExtractor: {
 }';
 
 # Extracting text line images using the info in the XML PAGE files
+
 mkdir Lines-Processed
-# for i in Test/*.xml; do N=`basename $i .xml`; textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
+
+#for i in Test/*.xml; do N=`basename $i .xml`; textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
 #for i in Test/*.xml; do textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
-for i in Pages-To-Process/*.xml; do textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
+#for i in Pages-To-Process/*.xml; do textFeats --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed $i; done
+
 # In parallel:
 textFeats -T $Threads_Nbr --cfg <( echo "$textFeats_cfg" ) --outdir ./Lines-Processed Pages-To-Process/*.xml 
 
@@ -64,6 +70,7 @@ laia-netout \
 # OBTAINING CHARACTER LATTICES AND CONVERTING THEM TO SLF FORMAT
 #######################################################################################
 # Require: latgen-faster-mapped and int2sym.pl from kaldi
+
 #latgen-faster-mapped --verbose=2 --allow-partial=true \
 #                     --acoustic-scale=1.16256062048 --max-active=2007483647 \
 #                     --beam=15 --lattice-beam=12 Models/train/new.mdl \ 
@@ -71,12 +78,12 @@ laia-netout \
 #       Models/test/graph/HCLG.fst scp:ConfMats.scp "ark,scp:lat.ark,lat.scp" \
 #       ark,t:hypotheses.dat 2>LOG-Lats
        
-latgen-faster-mapped --verbose=2 --allow-partial=true \
-                     --acoustic-scale=1.16256062048 --max-active=2007483647 \
-                     --beam=15 --lattice-beam=12 \
-                     Models/train/new.mdl \
-                     Models/test/graph/HCLG.fst scp:ConfMats.scp "ark,scp:lat.ark,lat.scp" \
-                     ark,t:hypotheses.dat 2>LOG-Lats
+#latgen-faster-mapped --verbose=2 --allow-partial=true \
+#                     --acoustic-scale=1.16256062048 --max-active=2007483647 \
+#                     --beam=15 --lattice-beam=12 \
+#                     Models/train/new.mdl \
+#                     Models/test/graph/HCLG.fst scp:ConfMats.scp "ark,scp:lat.ark,lat.scp" \
+#                     ark,t:hypotheses.dat 2>LOG-Lats
 
 # In parallel
 Lines_Nbr=$(cat ConfMats.scp | wc -l)
@@ -113,6 +120,7 @@ cat hypotheses.dat | int2sym.pl -f 2- Models/test/graph/words.txt > hypotheses_c
 # Require: lattice-char-to-word
 # git clone https://github.com/jpuigcerver/lattice-char-to-word
 # Require: int2sym.pl and convert_slf.pl from kaldi
+
 #mkdir SLFs;
 #cat lat.scp | 
 #while read L; do
@@ -126,19 +134,19 @@ cat hypotheses.dat | int2sym.pl -f 2- Models/test/graph/words.txt > hypotheses_c
 
 # Strange parsing when doing scp:<(echo $L), we get:
 # 'scp:<(echo M_Aidenbach_008-01_0051.line_1490004205809_88' 'lat.ark:46)'
-mkdir SLFs;
-> pseudowords.txt; # The file need to be initialized :/
-cat lat.scp | 
-while read L; do
-  echo $L;
-  timeout -s 9 10s lattice-char-to-word --beam=15 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:word.ark" ||
-  lattice-char-to-word --beam=5 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:word.ark";
-  awk '{print $2,gensub(/_/," ","g",$1)}' pseudowords.txt | int2sym.pl -f 2- Models/test/graph/words.txt | awk '{cad=""; for (i=2;i<=NF;i++) cad=cad""$i; print cad"\t"$1}' > pseudowords_t.txt;
-  lattice-copy ark:word.ark ark,t:- | int2sym.pl -f 3 pseudowords_t.txt | 
-  convert_slf.pl - SLFs; 
-done
+#mkdir SLFs;
+#> pseudowords.txt; # The file need to be initialized :/
+#cat lat.scp | 
+#while read L; do
+#  echo $L;
+#  timeout -s 9 10s lattice-char-to-word --beam=15 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:word.ark" ||
+#  lattice-char-to-word --beam=5 --save-symbols=pseudowords.txt --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:word.ark";
+#  awk '{print $2,gensub(/_/," ","g",$1)}' pseudowords.txt | int2sym.pl -f 2- Models/test/graph/words.txt | awk '{cad=""; for (i=2;i<=NF;i++) cad=cad""$i; print cad"\t"$1}' > pseudowords_t.txt;
+#  lattice-copy ark:word.ark ark,t:- | int2sym.pl -f 3 pseudowords_t.txt | 
+#  convert_slf.pl - SLFs; 
+#done
 
-# In parallel ?
+# In parallel
 
 #------------------------------------------------------------------------------#
 #                          PARALLELIZATION FUNCTIONS 

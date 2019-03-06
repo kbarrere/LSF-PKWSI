@@ -207,7 +207,9 @@ for f in SLFs/*.lat.gz; do F=$(basename $f .lat.gz); echo $F 1>&2; WordGraph2Ind
 # Filtering out the index for evaluation: take into account the keywords and the line IDs 
 zcat index_raw.idx.gz | awk 'BEGIN{while (getline < "INF/keywords_test.lst" > 0) W[$1]=""}{if ($2 in W) print}' > index_test.idx
 
+#######################################################################################
 # At line level
+#######################################################################################
 
 awk 'BEGIN{while (getline < "INF/ID_test.lst" > 0) L[$1]=""; while (getline < "index_test.idx" > 0) {k=$1"%"$2; S[k]=$3; G[k]=0}}{if ($2 in L) for (i=7;i<=NF;i++) if (length($i)>1) { k=$2"%"$i; G[k]=1; if (!(k in S)) S[k]=-1.0; } }END{for (k in S) print gensub("%"," ","g",k),G[k],S[k]}' INF/GT.txt > data_test.dat
 
@@ -240,16 +242,16 @@ kws-assessment -a -m -t -s data_test.dat -w INF/keywords_test.lst -l 16376
 # Convert indexes from line to page level
 # Require: https://github.com/kbarrere/KWS-Oversegmentation/blob/master/convert-lines-to-page/index_lines2page.py
 
-python index-lines2page.py index_test.idx index_test-page.idx --id-list-file INF/ID_test-page.lst
+python index_lines2page.py index_test.idx index_test-page.idx --id-list-file INF/ID_test-page.lst
 
 # Convert GroundTruth from line to page level
 # Require: https://github.com/kbarrere/KWS-Oversegmentation/blob/master/convert-lines-to-page/gt_lines2page.py
 
-python gt-lines2page.py INF/GT.txt INF/GT-page.txt
+python gt_lines2page.py INF/GT.txt INF/GT-page.txt
 
 awk 'BEGIN{while (getline < "INF/ID_test-page.lst" > 0) L[$1]=""; while (getline < "index_test-page.idx" > 0) {k=$1"%"$2; S[k]=$3; G[k]=0}}{if ($2 in L) for (i=7;i<=NF;i++) if (length($i)>1) { k=$2"%"$i; G[k]=1; if (!(k in S)) S[k]=-1.0; } }END{for (k in S) print gensub("%"," ","g",k),G[k],S[k]}' INF/GT-page.txt > data_test-page.dat
 
-#kws-assessment -a -m -t -s data_test-page.dat -w INF/keywords_test.lst -l 91
+kws-assessment -a -m -t -s data_test-page.dat -w INF/keywords_test.lst -l 91
 # INFO: Total number of events registered: 83662
 # INFO: Total number of different read line IDs: 91
 # INFO: Total number of different read words: 5725

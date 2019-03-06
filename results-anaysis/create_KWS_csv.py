@@ -62,6 +62,11 @@ with open(args.output_csv, 'wb') as csvfile:
 				line_splitted_2 = line_splitted[1].split(' ')
 				prres_score = line_splitted_2[1]
 				scores[cols_ind['PRres']] = prres_score
+			
+			if 'CERmin' in metric:
+				line_splitted_2 = line_splitted[1].split(' ')
+				cermin_score = line_splitted_2[1]
+				scores[cols_ind['CERmin']] = cermin_score
 		
 		filewriter.writerow(scores)
 				

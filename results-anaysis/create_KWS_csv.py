@@ -67,6 +67,11 @@ with open(args.output_csv, 'wb') as csvfile:
 				line_splitted_2 = line_splitted[1].split(' ')
 				cermin_score = line_splitted_2[1]
 				scores[cols_ind['CERmin']] = cermin_score
+			
+			if 'CER(>1.0)' in metric:
+				line_splitted_2 = line_splitted[1].split(' ')
+				cer_score = line_splitted_2[1]
+				scores[cols_ind['CER(>1.0)']] = cer_score
 		
 		filewriter.writerow(scores)
 				

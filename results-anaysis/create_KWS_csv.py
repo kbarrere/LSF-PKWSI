@@ -46,7 +46,7 @@ with open(args.output_csv, 'wb') as csvfile:
 			if 'RP' in metric:
 				line_splitted_2 = line_splitted[1].split(' ')
 				rp_score = line_splitted_2[1]
-				scores[cols_ind['AP']] = rp_score
+				scores[cols_ind['RP']] = rp_score
 		
 		filewriter.writerow(scores)
 				

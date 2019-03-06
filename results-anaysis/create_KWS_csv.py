@@ -6,7 +6,7 @@ import argparse
 # Parse arguments
 parser = argparse.ArgumentParser(description='Create a csv file from results of KWS in a text format')
 parser.add_argument('kws_results', nargs='+', help='file containing results of KWS in a text format')
-parser.add_argument('output_csv', help='outputted csv file')
+parser.add_argument('output_csv', help='outputed csv file')
 
 args = parser.parse_args()
 

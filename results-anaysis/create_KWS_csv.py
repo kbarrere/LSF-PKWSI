@@ -47,6 +47,11 @@ with open(args.output_csv, 'wb') as csvfile:
 				line_splitted_2 = line_splitted[1].split(' ')
 				rp_score = line_splitted_2[1]
 				scores[cols_ind['RP']] = rp_score
+			
+			if 'F1max' in metric:
+				line_splitted_2 = line_splitted[1].split(' ')
+				f1max_score = line_splitted_2[1]
+				scores[cols_ind['F1max']] = f1max_score
 		
 		filewriter.writerow(scores)
 				

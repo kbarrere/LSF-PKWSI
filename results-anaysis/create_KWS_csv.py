@@ -57,6 +57,11 @@ with open(args.output_csv, 'wb') as csvfile:
 				line_splitted_2 = line_splitted[1].split(' ')
 				rcmax_score = line_splitted_2[1]
 				scores[cols_ind['RCmax']] = rcmax_score
+			
+			if 'PRres' in metric:
+				line_splitted_2 = line_splitted[1].split(' ')
+				prres_score = line_splitted_2[1]
+				scores[cols_ind['PRres']] = prres_score
 		
 		filewriter.writerow(scores)
 				

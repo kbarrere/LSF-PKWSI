@@ -31,7 +31,7 @@ with open(args.output_csv, 'wb') as csvfile:
 				row = []
 				
 				line = line[:-1]
-				line_split = line.split(' ')
+				line_split = line.split('\t')
 				for score in line_split:
 					if len(score) > 0:
 						row.append(score)

@@ -30,4 +30,8 @@ with open(args.kws_result, 'r') as kws_result:
 			recall.append(row[2])
 
 plt.plot(recall, precision, label='rp-curve')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.ylim(0, 1)
+plt.xlim(0, 1)
 plt.show()

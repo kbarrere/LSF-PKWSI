@@ -107,10 +107,11 @@ done
 
 # Move splitted data to tmp dir.
 mkdir tmp
-mv ConfMats-Splitted-*.ark tmp/
 mv ConfMats-Splitted-*.scp tmp/
 mv hypotheses-*.dat tmp/
 mv LOG-Lats-* tmp/
+mv lat-*.ark tmp/
+mv lat-*.scp tmp/
 
 
 
@@ -266,4 +267,19 @@ kws-assessment -a -m -t -s data_test-page.dat -w INF/keywords_test.lst -l 91
 #        PRres = 0.137286965
 #       CERmin = 0.011789433 ( thrs = 0.598468 )
 #    CER(>1.0) = 0.023876386
+
+#INFO: Total number of events registered: 82187
+#INFO: Total number of different read line IDs: 91
+#INFO: Total number of different read words: 5725
+#INFO: Total number of OOV words: 179
+#INFO: Estimated number of missing no-relevant events (OffSet) = 438788
+#         MAP = 0.729364125 ( #Rel-Wrds = 5107 )
+#INFO: Total number of relevant events registered: 12439
+#          AP = 0.731480939
+#          RP = 0.709462175 ( min|Rec-Prc| = 0.000000 )
+#       F1max = 0.721218379 ( thrs = 0.249609 )
+#       RCmax = 0.909237077
+#       PRres = 0.139529719
+#      CERmin = 0.011781755 ( thrs = 0.598468 )
+#   CER(>1.0) = 0.023876386
 

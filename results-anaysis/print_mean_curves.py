@@ -32,11 +32,11 @@ for i in range(args.n):
 
 sum_y = [0.0] * args.n
 
+n = 0
+
 for kws_result_file in args.kws_results:
 	
 	with open(kws_result_file, 'r') as kws_result:
-		
-		print("-------------------------------------------------------")
 		
 		x_axis = []
 		y_axis = []
@@ -54,7 +54,8 @@ for kws_result_file in args.kws_results:
 				x_axis.append(float(row[x_metric]))
 				y_axis.append(float(row[y_metric]))
 		
-		if len(x_axis) > 0: 
+		if len(x_axis) > 0:
+			n += 1
 			
 			# Do a sort of x_axis and y_axis depending of x_axis values
 			for i in range(len(x_axis)-1, -1, -1):
@@ -89,9 +90,10 @@ for kws_result_file in args.kws_results:
 		
 		else:
 			print("ERROR ! Cannot get value from file " +  kws_result_file)
-			
-			
-		
-		
+	
+y_mean = []		
+for y in sum_y:
+	y_mean.append(y / n)
 
-# ~ plt.show()
+plt.plot(range_x, y_mean)
+plt.show()

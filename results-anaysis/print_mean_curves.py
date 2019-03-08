@@ -36,6 +36,8 @@ for kws_result_file in args.kws_results:
 	
 	with open(kws_result_file, 'r') as kws_result:
 		
+		print("-------------------------------------------------------")
+		
 		x_axis = []
 		y_axis = []
 		
@@ -49,19 +51,44 @@ for kws_result_file in args.kws_results:
 					if len(score) > 0:
 						row.append(score)
 				
-				x_axis.append(row[x_metric])
-				y_axis.append(row[y_metric])
+				x_axis.append(float(row[x_metric]))
+				y_axis.append(float(row[y_metric]))
 		
-		j = 0
-		for i in range(args.n - 1):
-			xmin = range_x[i]
-			xmax = range_x[i+1]
-			print(" Min: " + str(xmin) + " - Max: " + str(xmax) + " | Current: " + str(x_axis[j]))
+		if len(x_axis) > 0: 
 			
-			while x_axis[j] < xmax:
-				print(j)
-				print(x_axis[j])
-				j += 1
+			# Do a sort of x_axis and y_axis depending of x_axis values
+			for i in range(len(x_axis)-1, -1, -1):
+				for j in range(i):
+					if x_axis[j] > x_axis[j+1]:
+						tmp = x_axis[j]
+						x_axis[j] = x_axis[j+1]
+						x_axis[j+1] = tmp
+						
+						tmp = y_axis[j]
+						y_axis[j] = y_axis[j+1]
+						y_axis[j+1] = tmp
+			
+			
+			j = 0
+			value = 1
+			for i in range(args.n - 1):
+				xmin = range_x[i]
+				xmax = range_x[i+1]
+				
+				c = 0
+				summed_value = 0.0
+				while j < len(x_axis)-1 and x_axis[j] < xmax:
+					summed_value += y_axis[j]
+					j += 1
+					c += 1
+				
+				if c > 0:
+					value = summed_value / c
+				
+				sum_y[i] += value
+		
+		else:
+			print("ERROR ! Cannot get value from file " +  kws_result_file)
 			
 			
 		

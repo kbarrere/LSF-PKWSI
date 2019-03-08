@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser(description='Create a csv file to plot curves f
 parser.add_argument('kws_results', nargs='+', help='files containing the information')
 parser.add_argument('--x',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Recall', help='what data to use as the x axis')
 parser.add_argument('--y',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Precision', help='what data to use as the y axis')
+parser.add_argument('--n', type=int, default=100, help='nu,ber of point to print at the end')
 
 args = parser.parse_args()
 
@@ -23,6 +24,13 @@ plt.xlabel(args.x)
 plt.ylabel(args.y)
 plt.ylim(0, 1)
 plt.xlim(0, 1)
+
+range_x = []
+for i in range(args.n):
+	x = float(i) / float(args.n) 
+	range_x.append(x)
+
+sum_y = [0.0] * args.n
 
 for kws_result_file in args.kws_results:
 	
@@ -43,7 +51,20 @@ for kws_result_file in args.kws_results:
 				
 				x_axis.append(row[x_metric])
 				y_axis.append(row[y_metric])
-	
-		plt.plot(x_axis, y_axis)
+		
+		j = 0
+		for i in range(args.n - 1):
+			xmin = range_x[i]
+			xmax = range_x[i+1]
+			print(" Min: " + str(xmin) + " - Max: " + str(xmax) + " | Current: " + str(x_axis[j]))
+			
+			while x_axis[j] < xmax:
+				print(j)
+				print(x_axis[j])
+				j += 1
+			
+			
+		
+		
 
-plt.show()
+# ~ plt.show()

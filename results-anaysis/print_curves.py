@@ -11,9 +11,6 @@ parser.add_argument('--y',choices=['Threshold', 'Precision', 'Recall', 'F1-measu
 
 args = parser.parse_args()
 
-global_x_axis = []
-global_y_axis = []
-
 metric = {'Threshold':0, 'Precision':1, 'Recall':2, 'F1-measure':3, 'Classif-ER':4, 'Fls-Alarm-Prob':5, 'Miss-Prob':6}
 
 x_metric = metric[args.x]

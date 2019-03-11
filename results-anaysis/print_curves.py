@@ -36,7 +36,7 @@ for kws_result_file in args.kws_results:
 				line_split = line.split('\t')
 				for score in line_split:
 					if len(score) > 0:
-						row.append(score)
+						row.append(float(score))
 				
 				x_axis.append(row[x_metric])
 				y_axis.append(row[y_metric])

@@ -268,6 +268,7 @@ kws-assessment -a -m -t -s data_test-page.dat -w INF/keywords_test.lst -l 91
 #       CERmin = 0.011789433 ( thrs = 0.598468 )
 #    CER(>1.0) = 0.023876386
 
+# GT With the two missing pages
 #INFO: Total number of events registered: 82187
 #INFO: Total number of different read line IDs: 91
 #INFO: Total number of different read words: 5725

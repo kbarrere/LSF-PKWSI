@@ -23,18 +23,23 @@ plt.ylabel(args.y)
 plt.ylim(0, 1)
 plt.xlim(0, 1)
 
+threshold_x = []
+threshold_y = []
+
 for kws_result_file in args.kws_results:
 	
 	with open(kws_result_file, 'r') as kws_result:
+		if args.show_threshold > 0:
+			threshold_x.append([])
+			threshold_y.append([])
 		
 		x_axis = []
 		y_axis = []
 		
-		threshold_x = []
-		threshold_y = []
 		threshold_i = 0
-		
+				
 		for line in kws_result:
+			
 			if len(line) > 0 and line[0] != '#':
 				row = []
 				
@@ -51,12 +56,14 @@ for kws_result_file in args.kws_results:
 				
 				if args.show_threshold > 0:
 					while threshold_i*args.show_threshold < curr_threshold:
-						threshold_x.append(row[x_metric])
-						threshold_y.append(row[y_metric])
+						threshold_x[-1].append(row[x_metric])
+						threshold_y[-1].append(row[y_metric])
 						threshold_i += 1
 	
 		plt.plot(x_axis, y_axis)
-		print(threshold_x)
-		plt.plot(threshold_x, threshold_y, 'x')
+		
+if args.show_threshold > 0:
+	for i in range(len(threshold_x)):
+		plt.plot(threshold_x[i], threshold_y[i], 'x')
 
 plt.show()

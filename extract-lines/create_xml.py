@@ -34,6 +34,8 @@ if __name__ == '__main__':
 	parser.add_argument('--wait_key_end', action='store_true', help='wait a key to be pressed to exit the program')
 	parser.add_argument('--print_wavelength', action='store_true', help='print the wavelength of the differents peaks in the console')
 	parser.add_argument('--print_progress', action='store_true', help='print the progress of the whole process when using different images')
+	parser.add_argument('--max_height', type=int, default=-1, help='max height to print')
+	parser.add_argument('--max_width', type=int, default=-1, help='max width to print')
 
 	args = parser.parse_args()
 
@@ -57,7 +59,7 @@ if __name__ == '__main__':
 		pageCoords = convert_to_coords(0, 0, width-1, height-1)
 		
 		# Extract average line heights for each image
-		average_line_heights = compute_average_height(img_paths=[img_path], output_dir=args.output_dir, show_input=args.show_input, show_projection=args.show_projection, show_fft=args.show_fft, show_lines=args.show_lines, show_filters=args.show_filters, show_all=args.show_all, use_std_limit=args.use_std_limit, use_second_peak=args.use_second_peak, blur=args.blur, threshold=args.threshold, local_threshold=args.local_threshold, rlsa=args.rlsa, local_subdivision=args.local_subdivision, min_space_size=args.min_space_size, do_not_scale_fft=args.do_not_scale_fft, smooth_fft=args.smooth_fft, wait_key=args.wait_key, wait_key_end=args.wait_key_end, print_wavelength=args.print_wavelength, print_progress=False)[0]
+		average_line_heights = compute_average_height(img_paths=[img_path], output_dir=args.output_dir, show_input=args.show_input, show_projection=args.show_projection, show_fft=args.show_fft, show_lines=args.show_lines, show_filters=args.show_filters, show_all=args.show_all, use_std_limit=args.use_std_limit, use_second_peak=args.use_second_peak, blur=args.blur, threshold=args.threshold, local_threshold=args.local_threshold, rlsa=args.rlsa, local_subdivision=args.local_subdivision, min_space_size=args.min_space_size, do_not_scale_fft=args.do_not_scale_fft, smooth_fft=args.smooth_fft, wait_key=args.wait_key, wait_key_end=args.wait_key_end, print_wavelength=args.print_wavelength, print_progress=False, max_height=args.max_height, max_width=args.max_width)[0]
 		
 		for j in range(len(average_line_heights)):
 			average_line_height = average_line_heights[j]

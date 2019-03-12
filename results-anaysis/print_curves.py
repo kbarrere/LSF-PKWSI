@@ -10,6 +10,7 @@ parser.add_argument('kws_results', nargs='+', help='files containing the informa
 parser.add_argument('--x',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Recall', help='what data to use as the x axis')
 parser.add_argument('--y',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Precision', help='what data to use as the y axis')
 parser.add_argument('--show-threshold', type=float, default=0.0, help='print points on the curves showing how the thresold increase regularly')
+parser.add_argument('--link-threshold', action='store_true', help='Draw a curve between the sames theshold')
 
 args = parser.parse_args()
 
@@ -65,5 +66,19 @@ for kws_result_file in args.kws_results:
 if args.show_threshold > 0:
 	for i in range(len(threshold_x)):
 		plt.plot(threshold_x[i], threshold_y[i], 'x')
+
+if args.link_threshold and len(args.kws_results) >= 2:
+	threshold_line_x=[]
+	threshold_line_y=[]
+	
+	for i in range(min(len(threshold_x[0]), len(threshold_x[1]))):
+		line_x = [threshold_x[0][i], threshold_x[1][i]]
+		line_y = [threshold_y[0][i], threshold_y[1][i]]
+		
+		threshold_line_x.append(line_x)
+		threshold_line_y.append(line_y)
+	
+	for i in range(len(threshold_line_x)):
+		plt.plot(threshold_line_x[i], threshold_line_y[i], 'r--')
 
 plt.show()

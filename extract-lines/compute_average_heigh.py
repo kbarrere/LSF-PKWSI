@@ -34,8 +34,8 @@ if __name__ == '__main__':
 	parser.add_argument('--wait_key_end', action='store_true', help='wait a key to be pressed to exit the program')
 	parser.add_argument('--print_wavelength', action='store_true', help='print the wavelength of the differents peaks in the console')
 	parser.add_argument('--print_progress', action='store_true', help='print the progress of the whole process when using different images')
-	parser.add_argument('--max_height', default=-1, help='max height to print')
-	parser.add_argument('--max_width', default=-1, help='max width to print')
+	parser.add_argument('--max_height', type=int, default=-1, help='max height to print')
+	parser.add_argument('--max_width', type=int, default=-1, help='max width to print')
 
 	args = parser.parse_args()
 

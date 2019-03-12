@@ -1,5 +1,6 @@
 import argparse
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 
@@ -8,6 +9,7 @@ parser = argparse.ArgumentParser(description='Create a csv file to plot curves f
 parser.add_argument('kws_results', nargs='+', help='files containing the information')
 parser.add_argument('--x',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Recall', help='what data to use as the x axis')
 parser.add_argument('--y',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Precision', help='what data to use as the y axis')
+parser.add_argument('--show-threshold', type=float, default=0.0, help='print points on the curves showing how the thresold increase regularly')
 
 args = parser.parse_args()
 
@@ -28,6 +30,10 @@ for kws_result_file in args.kws_results:
 		x_axis = []
 		y_axis = []
 		
+		threshold_x = []
+		threshold_y = []
+		threshold_i = 0
+		
 		for line in kws_result:
 			if len(line) > 0 and line[0] != '#':
 				row = []
@@ -40,7 +46,17 @@ for kws_result_file in args.kws_results:
 				
 				x_axis.append(row[x_metric])
 				y_axis.append(row[y_metric])
+				
+				curr_threshold = row[metric['Threshold']]
+				
+				if args.show_threshold > 0:
+					while threshold_i*args.show_threshold < curr_threshold:
+						threshold_x.append(row[x_metric])
+						threshold_y.append(row[y_metric])
+						threshold_i += 1
 	
 		plt.plot(x_axis, y_axis)
+		print(threshold_x)
+		plt.plot(threshold_x, threshold_y, 'x')
 
 plt.show()

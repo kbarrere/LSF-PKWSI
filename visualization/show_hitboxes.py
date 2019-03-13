@@ -9,10 +9,6 @@ gt_path = 'GT-RS_Aicha_vorm_Wald_031_0187.txt'
 target = 'SEITE'
 
 img = Image.open(img_path)
-index = open(index_path, 'r')
-page = pageData(page_path)
-
-
 
 def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 	width, height = img.size
@@ -61,6 +57,7 @@ def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
 lines_found = []
 
 # Search for the desired keywords in index
+index = open(index_path, 'r')
 for line in index:
 	line = line[:-1]
 	lineID, keyword, p, start_frame, end_frame, total_frames = line.split(' ')
@@ -68,11 +65,10 @@ for line in index:
 		#lineID = lineID.replace(',', '_')
 		pageID, lineID = lineID.split('.')
 		lines_found.append((lineID, keyword, float(p), int(start_frame), int(end_frame), int(total_frames)))
-
-for line in lines_found:
-	print(line[0])
+index.close()
 
 # Open Page XML
+page = pageData(page_path)
 page.parse()
 textline_elements = page.get_region('TextLine')
 
@@ -117,13 +113,9 @@ for line in gt:
 	pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
 	keywords = line_split[6:]
 	for keyword in keywords:
-		print(keyword)
 		if keyword == target:
 			draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=5)
 		
-
 gt.close
 
 img.show()
-
-index.close()

@@ -5,6 +5,7 @@ from xmlPAGE import *
 img_path = 'RS_Aicha_vorm_Wald_031_0187.jpg'
 page_path = 'RS_Aicha_vorm_Wald_031_0187.xml'
 index_path = 'RS_Aicha_vorm_Wald_031_0187.idx'
+gt_path = 'GT-RS_Aicha_vorm_Wald_031_0187.txt'
 target = 'SEITE'
 
 img = Image.open(img_path)
@@ -42,6 +43,13 @@ def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 
 
 
+def draw_box(img, xmin, ymin, xmax, ymax, line_thickness=1, color=(255, 0, 0), dx=0.1):
+	draw_line(img, xmin, ymin, xmin, ymax, line_thickness=line_thickness, color=color, dx=dx)
+	draw_line(img, xmin, ymax, xmax, ymax, line_thickness=line_thickness, color=color, dx=dx)
+	draw_line(img, xmax, ymax, xmax, ymin, line_thickness=line_thickness, color=color, dx=dx)
+	draw_line(img, xmax, ymin, xmin, ymin, line_thickness=line_thickness, color=color, dx=dx)
+	
+	
 def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
 	output_color = []
 	for c in range(len(bad_color)):
@@ -87,21 +95,11 @@ for textline_element in textline_elements:
 			ymin = line_ymin
 			ymax = line_ymax
 			
-			# ~ print("---------------------------------------------------")
-			# ~ print("line_xmin " + str(line_xmin))
-			# ~ print("width " + str(width))
-			# ~ print("start_frame " + str(start_frame))
-			# ~ print("end_frame " + str(end_frame))
-			# ~ print("total_frame " + str(total_frame))
-			# ~ print("xmin " + str(xmin))
-			# ~ print("xmax " + str(xmax))
-			# ~ print("ymin " + str(ymin))
-			# ~ print("ymax " + str(ymax))
-			
 			line_coords=[[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
 			
 			elements_found.append((keyword, p, line_coords))
 
+# Show bounding boxes and scores on the picture
 for el in elements_found:
 	score = el[1]
 	coords = el[2]
@@ -109,6 +107,22 @@ for el in elements_found:
 		x1, y1 = coords[i]
 		x2, y2 = coords[(i+1) % len(coords)]
 		draw_line(img, x1, y1, x2, y2, color=score_to_color(score), line_thickness=5)
+
+# Show bounding boxes and scores on the picture of the GT
+gt = open(gt_path, 'r')
+
+for line in gt:
+	line = line[:-1]
+	line_split = line.split(' ')
+	pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
+	keywords = line_split[6:]
+	for keyword in keywords:
+		print(keyword)
+		if keyword == target:
+			draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=5)
+		
+
+gt.close
 
 img.show()
 

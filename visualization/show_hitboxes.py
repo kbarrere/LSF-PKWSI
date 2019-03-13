@@ -1,14 +1,23 @@
 from PIL import Image
 import numpy as np
+import argparse
 from xmlPAGE import *
 
-img_path = 'RS_Aicha_vorm_Wald_031_0187.jpg'
-page_path = 'RS_Aicha_vorm_Wald_031_0187.xml'
-index_path = 'RS_Aicha_vorm_Wald_031_0187.idx'
-gt_path = 'GT-RS_Aicha_vorm_Wald_031_0187.txt'
-target = 'SEITE'
 
-img = Image.open(img_path)
+
+if __name__ == '__main__':
+	
+	# Parse arguments
+	parser = argparse.ArgumentParser(description='Print Bounding boxes for the given index file and image')
+	parser.add_argument('img_path', help='path to the image to show')
+	parser.add_argument('page_path', help='path to page xml file associated to the image and the lines')
+	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines')
+	parser.add_argument('target', help='keyword to search for')
+	parser.add_argument('--gt', help='path to the Ground Truth (GT)')
+
+	args = parser.parse_args()
+
+img = Image.open(args.img_path)
 
 def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 	width, height = img.size
@@ -57,18 +66,18 @@ def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
 lines_found = []
 
 # Search for the desired keywords in index
-index = open(index_path, 'r')
+index = open(args.index_path, 'r')
 for line in index:
 	line = line[:-1]
 	lineID, keyword, p, start_frame, end_frame, total_frames = line.split(' ')
-	if keyword == target:
+	if keyword == args.target:
 		#lineID = lineID.replace(',', '_')
 		pageID, lineID = lineID.split('.')
 		lines_found.append((lineID, keyword, float(p), int(start_frame), int(end_frame), int(total_frames)))
 index.close()
 
 # Open Page XML
-page = pageData(page_path)
+page = pageData(args.page_path)
 page.parse()
 textline_elements = page.get_region('TextLine')
 
@@ -105,17 +114,18 @@ for el in elements_found:
 		draw_line(img, x1, y1, x2, y2, color=score_to_color(score), line_thickness=5)
 
 # Show bounding boxes and scores on the picture of the GT
-gt = open(gt_path, 'r')
+if args.gt:
+	gt = open(args.gt, 'r')
 
-for line in gt:
-	line = line[:-1]
-	line_split = line.split(' ')
-	pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
-	keywords = line_split[6:]
-	for keyword in keywords:
-		if keyword == target:
-			draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=5)
-		
-gt.close
+	for line in gt:
+		line = line[:-1]
+		line_split = line.split(' ')
+		pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
+		keywords = line_split[6:]
+		for keyword in keywords:
+			if keyword == args.target:
+				draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=5)
+			
+	gt.close
 
 img.show()

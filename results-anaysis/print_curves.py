@@ -11,10 +11,13 @@ parser.add_argument('--x',choices=['Threshold', 'Precision', 'Recall', 'F1-measu
 parser.add_argument('--y',choices=['Threshold', 'Precision', 'Recall', 'F1-measure', 'Classif-ER', 'Fls-Alarm-Prob', 'Miss-Prob'], default='Precision', help='what data to use as the y axis')
 parser.add_argument('--show-threshold', type=float, default=0.0, help='print points on the curves showing how the thresold increase regularly')
 parser.add_argument('--link-threshold', action='store_true', help='Draw a curve between the sames theshold')
+parser.add_argument('--format-2', action='store_true', help='Wheter to read the data as a two columns Precision Recall')
 
 args = parser.parse_args()
 
 metric = {'Threshold':0, 'Precision':1, 'Recall':2, 'F1-measure':3, 'Classif-ER':4, 'Fls-Alarm-Prob':5, 'Miss-Prob':6}
+if args.format_2:
+	metric = {'Precision':0, 'Recall':1}
 
 x_metric = metric[args.x]
 y_metric = metric[args.y]
@@ -53,7 +56,9 @@ for kws_result_file in args.kws_results:
 				x_axis.append(row[x_metric])
 				y_axis.append(row[y_metric])
 				
-				curr_threshold = row[metric['Threshold']]
+				curr_threshold = 0.0
+				if args.show_threshold > 0:
+					curr_threshold = row[metric['Threshold']]
 				
 				if args.show_threshold > 0:
 					while threshold_i*args.show_threshold < curr_threshold:

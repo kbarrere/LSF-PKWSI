@@ -8,17 +8,25 @@ if __name__ == '__main__':
 
 
 
-# ~ def mean_std(scores):
-	# ~ n = len(scores)
+def compute_mean_std(scores):
+	n = len(scores)
 	
-	# ~ # Compute mean
-	# ~ s = 0
-	# ~ for 
+	# Compute mean
+	s = 0.0
+	for score in scores:
+		s += score
+	
+	mean = s / float(n)
+	
+	# Compute std
+	std = 42
+	
+	return mean, std
 	
 	
 
 
-tp_score = []
+tp_scores = []
 
 with open(args.dat_file, 'r') as dat_file:
 	for line in dat_file:
@@ -31,9 +39,12 @@ with open(args.dat_file, 'r') as dat_file:
 		
 		# TP
 		if gtb and score >= 0:
-			tp_score.append(score)
+			tp_scores.append(score)
 
-print("# TP: " + str(len(tp_score)))
+tp_mean, tp_std = compute_mean_std(tp_scores)
+print("# TP: " + str(len(tp_scores)))
+print("TP mean: " + str(tp_mean))
+print("TP std: " + str(tp_std))
 		
 		
 		

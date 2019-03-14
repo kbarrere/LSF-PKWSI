@@ -19,7 +19,11 @@ def compute_mean_std(scores):
 	mean = s / float(n)
 	
 	# Compute std
-	std = 42
+	s = 0
+	for score in scores:
+		s += (mean - score) ** 2.0
+	
+	std = (s / n) ** 0.5
 	
 	return mean, std
 	
@@ -43,8 +47,8 @@ with open(args.dat_file, 'r') as dat_file:
 
 tp_mean, tp_std = compute_mean_std(tp_scores)
 print("# TP: " + str(len(tp_scores)))
-print("TP mean: " + str(tp_mean))
-print("TP std: " + str(tp_std))
+print("TP score mean: " + str(tp_mean))
+print("TP score std: " + str(tp_std))
 		
 		
 		

@@ -54,6 +54,8 @@ tp_mean, tp_std = compute_mean_std(tp_scores)
 fp_mean, fp_std = compute_mean_std(fp_scores)
 detected = len(tp_scores) + len(fp_scores)
 
+print("===================================")
+print("# Detected: " + str(detected))
 print("# TP: " + str(len(tp_scores)))
 print("% TP: " + str(float(len(tp_scores)) / float(detected)))
 print("TP score mean: " + str(tp_mean))

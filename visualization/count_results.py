@@ -32,6 +32,7 @@ def compute_mean_std(scores):
 
 tp_scores = []
 fp_scores = []
+fn_nbr = 0
 
 with open(args.dat_file, 'r') as dat_file:
 	for line in dat_file:
@@ -49,13 +50,19 @@ with open(args.dat_file, 'r') as dat_file:
 		# FP
 		if not gtb and score >= 0:
 			fp_scores.append(score)
+		
+		# FN
+		if gtb and score < 0:
+			fn_nbr += 1
 
 tp_mean, tp_std = compute_mean_std(tp_scores)
 fp_mean, fp_std = compute_mean_std(fp_scores)
 detected = len(tp_scores) + len(fp_scores)
+target_nbr = len(tp_scores) + fn_nbr
 
 print("===============================")
 print("# Detected: " + str(detected))
+print("# To dectect: " + str(target_nbr))
 print("-------------------------------")
 print("# TP: " + str(len(tp_scores)))
 print("% TP: " + str(float(len(tp_scores)) / float(detected)))
@@ -66,6 +73,6 @@ print("# FP: " + str(len(fp_scores)))
 print("% FP: " + str(float(len(fp_scores)) / float(detected)))
 print("FP score mean: " + str(fp_mean))
 print("FP score std: " + str(fp_std))
-		
-		
-		
+print("-------------------------------")
+print("# FN: " + str(fn_nbr))
+print("% FN: " + str(float(fn_nbr) / float(target_nbr)))

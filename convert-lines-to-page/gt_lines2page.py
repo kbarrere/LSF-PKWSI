@@ -6,6 +6,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Convert the Groundtruth from line level to page level')
 parser.add_argument('lines_file', help='path to the text file containing the groundtruth at the line level')
 parser.add_argument('page_file', help='path to the text file containing the groundtruth at the line level')
+parser.add_argument('--id-list-file', help='path to the file that gives pageID')
 
 args = parser.parse_args()
 
@@ -33,6 +34,16 @@ class PageGT:
 	def get_coordinates(self):
 		return self.x, self.y
 
+page_ids = []
+if args.id_list_file:
+	with open(args.id_list_file, 'r') as id_list_file:
+		for line in id_list_file:
+			line = line[:-1]
+			line_split = line.split('.')
+			pageID = line_split[0]
+			page_ids.append(pageID)
+	
+
 
 lines_file = open(args.lines_file, "r")
 page_file = open(args.page_file, "w")
@@ -50,16 +61,17 @@ for line in lines_file:
 	y2 = line_words[5]
 	words = line_words[6:]
 	
-	# Adding the page in the dictionnary if it is not iniside it
-	if page_id not in page_dic:
-		page_dic[page_id] = PageGT(page_id)
-	
-	# Store every words
-	for word in words:
-		if word:
-			page_dic[page_id].add_word(word)
-	
-	page_dic[page_id].expand_coordinates(x2, y2)
+	if not args.id_list_file or page_id in page_ids:
+		# Adding the page in the dictionnary if it is not iniside it
+		if page_id not in page_dic:
+			page_dic[page_id] = PageGT(page_id)
+		
+		# Store every words
+		for word in words:
+			if word:
+				page_dic[page_id].add_word(word)
+		
+		page_dic[page_id].expand_coordinates(x2, y2)
 
 for key in page_dic:
 	page_id = key

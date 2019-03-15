@@ -14,6 +14,7 @@ if __name__ == '__main__':
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines')
 	parser.add_argument('target', help='keyword to search for')
 	parser.add_argument('--gt', help='path to the Ground Truth (GT)')
+	parser.add_argument('--bb-thickness', type=int, default=5, help='Size of the bounding box contour')
 
 	args = parser.parse_args()
 
@@ -111,7 +112,7 @@ for el in elements_found:
 	for i in range(len(coords)):
 		x1, y1 = coords[i]
 		x2, y2 = coords[(i+1) % len(coords)]
-		draw_line(img, x1, y1, x2, y2, color=score_to_color(score), line_thickness=5)
+		draw_line(img, x1, y1, x2, y2, color=score_to_color(score), line_thickness=args.bb_thickness)
 
 # Show bounding boxes and scores on the picture of the GT
 if args.gt:
@@ -124,7 +125,7 @@ if args.gt:
 		keywords = line_split[6:]
 		for keyword in keywords:
 			if keyword == args.target:
-				draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=5)
+				draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=args.bb_thickness)
 			
 	gt.close
 

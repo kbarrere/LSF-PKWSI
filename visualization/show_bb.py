@@ -27,6 +27,7 @@ class BB:
 		self.xmax = xmax
 		self.ymax = ymax
 		self.score = score
+		self.score = score
 	
 	def get_coords(self):
 		return self.xmin, self.ymin, self.xmax, self.ymax
@@ -45,13 +46,8 @@ def is_intersection_bb(bb1, bb2):
 	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
 	
 	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
-	
-	
-	
-	
 
 
-img = Image.open(args.img_path)
 
 def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 	width, height = img.size
@@ -87,8 +83,15 @@ def draw_box(img, xmin, ymin, xmax, ymax, line_thickness=1, color=(255, 0, 0), d
 	draw_line(img, xmin, ymax, xmax, ymax, line_thickness=line_thickness, color=color, dx=dx)
 	draw_line(img, xmax, ymax, xmax, ymin, line_thickness=line_thickness, color=color, dx=dx)
 	draw_line(img, xmax, ymin, xmin, ymin, line_thickness=line_thickness, color=color, dx=dx)
+
+
+def draw_bb(img, bb, line_thickness=1, dx=0.1):
+	xmin, ymin, xmax, ymax = bb.get_coords()
+	score = bb.get_score()
 	
-	
+	draw_box(img, xmin, ymin, xmax, ymax, line_thickness=line_thickness, color=score_to_color(score), dx=dx)
+
+
 def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
 	output_color = []
 	for c in range(len(bad_color)):
@@ -97,6 +100,8 @@ def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
 	return tuple(output_color)
 
 
+
+img = Image.open(args.img_path)
 lines_found = []
 
 # Search for the desired keywords in index
@@ -116,6 +121,7 @@ page.parse()
 textline_elements = page.get_region('TextLine')
 
 elements_found = []
+bb_list = []
 for textline_element in textline_elements:
 	textline_element_id = page.get_id(textline_element)
 	for line in lines_found:
@@ -134,32 +140,77 @@ for textline_element in textline_elements:
 			ymin = line_ymin
 			ymax = line_ymax
 			
-			line_coords=[[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
+			bb = BB(xmin, ymin, xmax, ymax, p)
+			bb_list.append(bb)
 			
-			elements_found.append((keyword, p, line_coords))
+			# ~ line_coords=[[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
+			
+			# ~ elements_found.append((keyword, p, line_coords))
+
+# ~ for i in range(rec_merge):
+bb_list_tmp1 = bb_list
+bb_list_list_tmp2 = []
+
+for bb1 in bb_list:
+	is_bb_alone = True
+	
+	# Search for a bb that has an intersection with current bb
+	for bb2 in bb_list:
+		if is_intersection_bb(bb1, bb2):
+			is_bb_alone = False
+			
+			# Try to insert that couple of bounding box in every existing group of bounding box
+			is_couple_new = True
+			for bb_list_tmp2 in bb_list_list_tmp2:
+				
+				# Test if that couple can be inserted in that group
+				is_bbs_match = True
+				if bb1 not in bb_list_tmp2:
+					for bb3 in bb_list_tmp2:
+						if not is_intersection_bb(bb1, bb3):
+							is_bbs_match = False
+				if bb2 not in bb_list_tmp2:
+					for bb3 in bb_list_tmp2:
+						if not is_intersection_bb(bb2, bb3):
+							is_bbs_match = False
+				
+				# Insert the couple in that group
+				if is_bbs_match:
+					is_couple_new = False
+					if bb1 not in bb_list_tmp2:
+						print("Insert !")
+						bb_list_tmp2.append(bb1)
+					if bb2 not in bb_list_tmp2:
+						print("Insert !")
+						bb_list_tmp2.append(bb2)
+			
+			# Create a new group is the couple match nowhere
+			if is_couple_new:
+				print("Creating a new group")
+				bb_list_list_tmp2.append([bb1, bb2])
+
+# Merge the bounding boxes of one group into one big one
+
 
 # Show bounding boxes and scores on the picture
-for el in elements_found:
-	score = el[1]
-	coords = el[2]
-	for i in range(len(coords)):
-		x1, y1 = coords[i]
-		x2, y2 = coords[(i+1) % len(coords)]
-		draw_line(img, x1, y1, x2, y2, color=score_to_color(score), line_thickness=args.bb_thickness)
+# ~ for bb in bb_list:
+	# ~ draw_bb(img, bb, line_thickness=args.bb_thickness)
 
 # Show bounding boxes and scores on the picture of the GT
-if args.gt:
-	gt = open(args.gt, 'r')
+# ~ if args.gt:
+	# ~ gt = open(args.gt, 'r')
 
-	for line in gt:
-		line = line[:-1]
-		line_split = line.split(' ')
-		pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
-		keywords = line_split[6:]
-		for keyword in keywords:
-			if keyword == args.target:
-				draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=args.bb_thickness)
+	# ~ for line in gt:
+		# ~ line = line[:-1]
+		# ~ line_split = line.split(' ')
+		# ~ pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
+		# ~ keywords = line_split[6:]
+		# ~ for keyword in keywords:
+			# ~ if keyword == args.target:
+				# ~ draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=args.bb_thickness)
 			
-	gt.close
+	# ~ gt.close
 
 img.show()
+
+

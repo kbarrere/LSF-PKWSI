@@ -15,8 +15,41 @@ if __name__ == '__main__':
 	parser.add_argument('target', help='keyword to search for')
 	parser.add_argument('--gt', help='path to the Ground Truth (GT)')
 	parser.add_argument('--bb-thickness', type=int, default=5, help='Size of the bounding box contour')
+	parser.add_argument('--rec-merge', type=int, default=0, help='Number of time to merge the close bounding box. -1 to do it until it converges')
 
 	args = parser.parse_args()
+
+
+class BB:
+	def __init__(self, xmin, ymin, xmax, ymax, score):
+		self.xmin = xmin
+		self.ymin = ymin
+		self.xmax = xmax
+		self.ymax = ymax
+		self.score = score
+	
+	def get_coords(self):
+		return self.xmin, self.ymin, self.xmax, self.ymax
+	
+	def get_score(self):
+		return self.score
+
+def is_in_range(xmin, xmax, x):
+	return (xmin <= x and x <= xmax)
+
+def is_intersection_segment(xmin1, xmax1, xmin2, xmax2):
+	return (is_in_range(xmin1, xmax1, xmin2) or is_in_range(xmin1, xmax1, xmax2) or is_in_range(xmin2, xmax2, xmin1) or is_in_range(xmin2, xmax2, xmax1))
+
+def is_intersection_bb(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
+	
+	
+	
+	
+
 
 img = Image.open(args.img_path)
 

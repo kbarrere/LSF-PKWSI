@@ -1,6 +1,7 @@
 from PIL import Image
 import numpy as np
 import argparse
+import random
 from xmlPAGE import *
 
 
@@ -123,6 +124,40 @@ def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
 	return tuple(output_color)
 
 
+def sample_from_bb_group(bb_list, point_size=2):
+	n = len(bb_list)
+	
+	total_score = 0.0
+	added_scores = [0.0]
+	max_score = 0.0
+	for bb in bb_list:
+		score = bb.get_score()
+		max_score = max(max_score, score)
+		total_score += score
+		added_scores.append(total_score)
+	
+	# Generates random points
+	nbr_points = int(1000*max_score)
+	for i in range(nbr_points):
+		
+		# Pick one square bb based on relative probability
+		r = random.random() * total_score
+		j = 0
+		while j < n-1 and added_scores[j+1] < r:
+			j += 1
+		
+		bb = bb_list[j]
+		xmin, ymin, xmax, ymax = bb.get_coords()
+		x = random.uniform(xmin, xmax)
+		y = random.uniform(ymin, ymax)
+		
+		for dx in range(point_size):
+			for dy in range(point_size):
+				img.putpixel((int(x)+dx, int(y)+dy), score_to_color(max_score))
+		
+		
+		
+
 
 img = Image.open(args.img_path)
 lines_found = []
@@ -169,7 +204,8 @@ for textline_element in textline_elements:
 			# ~ line_coords=[[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
 			
 			# ~ elements_found.append((keyword, p, line_coords))
-
+for bb in bb_list:
+	draw_bb(img, bb, line_thickness=args.bb_thickness)
 bb_list_tmp1 = bb_list
 
 for i in range(args.rec_merge):
@@ -221,6 +257,7 @@ for i in range(args.rec_merge):
 	merged_bb_list = []
 	
 	for bb_list_tmp2 in bb_list_list_tmp2:
+		sample_from_bb_group(bb_list_tmp2)
 		merged_bb_list.append(merge_bb_group(bb_list_tmp2))
 
 	bb_list_tmp1 = merged_bb_list
@@ -228,8 +265,8 @@ for i in range(args.rec_merge):
 bb_list = bb_list_tmp1
 
 # Show bounding boxes and scores on the picture
-for bb in bb_list:
-	draw_bb(img, bb, line_thickness=args.bb_thickness)
+# ~ for bb in bb_list:
+	# ~ draw_bb(img, bb, line_thickness=args.bb_thickness)
 
 # Show bounding boxes and scores on the picture of the GT
 if args.gt:

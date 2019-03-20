@@ -137,7 +137,8 @@ def sample_from_bb_group(bb_list, point_size=2):
 		added_scores.append(total_score)
 	
 	# Generates random points
-	nbr_points = int(1000*max_score)
+	nbr_points = 1000
+	sampled_points = []
 	for i in range(nbr_points):
 		
 		# Pick one square bb based on relative probability
@@ -150,12 +151,44 @@ def sample_from_bb_group(bb_list, point_size=2):
 		xmin, ymin, xmax, ymax = bb.get_coords()
 		x = random.uniform(xmin, xmax)
 		y = random.uniform(ymin, ymax)
+		sampled_points.append((x, y))
 		
 		for dx in range(point_size):
 			for dy in range(point_size):
 				img.putpixel((int(x)+dx, int(y)+dy), score_to_color(max_score))
+	compute_ellipse_bb(sampled_points)
 		
-		
+
+def compute_ellipse_bb(sampled_points):
+	n = len(sampled_points)
+	
+	# Compute mean
+	sum_x = 0.0
+	sum_y = 0.0
+	for p in sampled_points:
+		x, y = p
+		sum_x += x
+		sum_y += y
+	mu_x = sum_x / n
+	mu_y = sum_y / n
+	
+	# Compute std
+	sum_x = 0.0
+	sum_y = 0.0
+	for p in sampled_points:
+		x, y = p
+		sum_x += (x - mu_x) ** 2.0
+		sum_y += (y - mu_y) ** 2.0
+	std_x = (sum_x / n) ** 0.5
+	std_y = (sum_y / n) ** 0.5
+	
+	print("----------------------------------------")
+	print(mu_x)
+	print(mu_y)
+	print(std_x)
+	print(std_y)
+	
+	
 		
 
 

@@ -64,6 +64,14 @@ def merge_bb_group(bb_list):
 	
 	return bb
 
+def bb_equal(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	score1 = bb1.get_score()
+	score2 = bb2.get_score()
+	
+	return (xmin1 == xmin2 and ymin1 == ymin2 and xmax1 == xmax2 and ymax1 == ymax2 and score1 == score2)
+
 def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 	width, height = img.size
 	
@@ -162,55 +170,60 @@ for textline_element in textline_elements:
 			
 			# ~ elements_found.append((keyword, p, line_coords))
 
-# ~ for i in range(rec_merge):
 bb_list_tmp1 = bb_list
-bb_list_list_tmp2 = []
 
-for bb1 in bb_list_tmp1:
-	is_bb_alone = True
+for i in range(args.rec_merge):
+	bb_list_list_tmp2 = []
 	
-	# Search for a bb that has an intersection with current bb
-	for bb2 in bb_list:
-		if is_intersection_bb(bb1, bb2):
-			is_bb_alone = False
-			
-			# Try to insert that couple of bounding box in every existing group of bounding box
-			is_couple_new = True
-			for bb_list_tmp2 in bb_list_list_tmp2:
+	nbr_new = 0
+
+	for bb1 in bb_list_tmp1:
+		
+		# Search for a bb that has an intersection with current bb
+		is_bb_alone = True
+		for bb2 in bb_list:
+			if is_intersection_bb(bb1, bb2) and not bb_equal(bb1, bb2):
+				is_bb_alone = False
 				
-				# Test if that couple can be inserted in that group
-				is_bbs_match = True
-				if bb1 not in bb_list_tmp2:
-					for bb3 in bb_list_tmp2:
-						if not is_intersection_bb(bb1, bb3):
-							is_bbs_match = False
-				if bb2 not in bb_list_tmp2:
-					for bb3 in bb_list_tmp2:
-						if not is_intersection_bb(bb2, bb3):
-							is_bbs_match = False
-				
-				# Insert the couple in that group
-				if is_bbs_match:
-					is_couple_new = False
+				# Try to insert that couple of bounding box in every existing group of bounding box
+				is_couple_new = True
+				for bb_list_tmp2 in bb_list_list_tmp2:
+					
+					# Test if that couple can be inserted in that group
+					is_bbs_match = True
 					if bb1 not in bb_list_tmp2:
-						print("Insert !")
-						bb_list_tmp2.append(bb1)
+						for bb3 in bb_list_tmp2:
+							if not is_intersection_bb(bb1, bb3):
+								is_bbs_match = False
 					if bb2 not in bb_list_tmp2:
-						print("Insert !")
-						bb_list_tmp2.append(bb2)
+						for bb3 in bb_list_tmp2:
+							if not is_intersection_bb(bb2, bb3):
+								is_bbs_match = False
+					
+					# Insert the couple in that group
+					if is_bbs_match:
+						is_couple_new = False
+						if bb1 not in bb_list_tmp2:
+							nbr_new += 1
+							bb_list_tmp2.append(bb1)
+						if bb2 not in bb_list_tmp2:
+							nbr_new += 1
+							bb_list_tmp2.append(bb2)
+				
+				# Create a new group is the couple match nowhere
+				if is_couple_new:
+					bb_list_list_tmp2.append([bb1, bb2])
 			
-			# Create a new group is the couple match nowhere
-			if is_couple_new:
-				print("Creating a new group")
-				bb_list_list_tmp2.append([bb1, bb2])
+		if is_bb_alone:
+			bb_list_list_tmp2.append([bb1])
+	
+	# Merge the bounding boxes of one group into one big one
+	merged_bb_list = []
+	
+	for bb_list_tmp2 in bb_list_list_tmp2:
+		merged_bb_list.append(merge_bb_group(bb_list_tmp2))
 
-# Merge the bounding boxes of one group into one big one
-merged_bb_list = []
-for bb_list_tmp2 in bb_list_list_tmp2:
-	merged_bb_list.append(merge_bb_group(bb_list_tmp2))
-
-bb_list_tmp1 = merged_bb_list
-# End of possible recursion loop
+	bb_list_tmp1 = merged_bb_list
 
 bb_list = bb_list_tmp1
 
@@ -219,19 +232,19 @@ for bb in bb_list:
 	draw_bb(img, bb, line_thickness=args.bb_thickness)
 
 # Show bounding boxes and scores on the picture of the GT
-# ~ if args.gt:
-	# ~ gt = open(args.gt, 'r')
+if args.gt:
+	gt = open(args.gt, 'r')
 
-	# ~ for line in gt:
-		# ~ line = line[:-1]
-		# ~ line_split = line.split(' ')
-		# ~ pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
-		# ~ keywords = line_split[6:]
-		# ~ for keyword in keywords:
-			# ~ if keyword == args.target:
-				# ~ draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=args.bb_thickness)
+	for line in gt:
+		line = line[:-1]
+		line_split = line.split(' ')
+		pageID, lineID, xmin, ymin, xmax, ymax = line_split[:6]
+		keywords = line_split[6:]
+		for keyword in keywords:
+			if keyword == args.target:
+				draw_box(img, int(xmin), int(ymin), int(xmax), int(ymax), color=(0, 0, 255), line_thickness=args.bb_thickness)
 			
-	# ~ gt.close
+	gt.close
 
 img.show()
 

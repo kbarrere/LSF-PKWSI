@@ -53,7 +53,7 @@ def merge_bbs(bb1, bb2):
 	score1 = bb1.get_score()
 	score2 = bb2.get_score()
 	
-	bb = BB(min(xmin1, xmin2), min(ymin1, ymin2), max(xmax1, xmax2), max(ymax1, ymax2), max(score1), max(score2))
+	bb = BB(min(xmin1, xmin2), min(ymin1, ymin2), max(xmax1, xmax2), max(ymax1, ymax2), max(score1, score2))
 	return bb
 
 def merge_bb_group(bb_list):
@@ -166,7 +166,7 @@ for textline_element in textline_elements:
 bb_list_tmp1 = bb_list
 bb_list_list_tmp2 = []
 
-for bb1 in bb_list:
+for bb1 in bb_list_tmp1:
 	is_bb_alone = True
 	
 	# Search for a bb that has an intersection with current bb
@@ -205,7 +205,14 @@ for bb1 in bb_list:
 				bb_list_list_tmp2.append([bb1, bb2])
 
 # Merge the bounding boxes of one group into one big one
+merged_bb_list = []
+for bb_list_tmp2 in bb_list_list_tmp2:
+	merged_bb_list.append(merge_bb_group(bb_list_tmp2))
 
+bb_list_tmp1 = merged_bb_list
+# End of possible recursion loop
+
+bb_list = bb_list_tmp1
 
 # Show bounding boxes and scores on the picture
 for bb in bb_list:

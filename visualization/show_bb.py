@@ -56,6 +56,14 @@ def merge_bbs(bb1, bb2):
 	bb = BB(min(xmin1, xmin2), min(ymin1, ymin2), max(xmax1, xmax2), max(ymax1, ymax2), max(score1), max(score2))
 	return bb
 
+def merge_bb_group(bb_list):
+	bb = bb_list[0]
+	for i in range(1, len(bb_list)):
+		bb2 = bb_list[i]
+		bb = merge_bbs(bb, bb2)
+	
+	return bb
+
 def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 	width, height = img.size
 	

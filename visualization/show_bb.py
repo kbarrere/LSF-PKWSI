@@ -47,7 +47,14 @@ def is_intersection_bb(bb1, bb2):
 	
 	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
 
-
+def merge_bbs(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	score1 = bb1.get_score()
+	score2 = bb2.get_score()
+	
+	bb = BB(min(xmin1, xmin2), min(ymin1, ymin2), max(xmax1, xmax2), max(ymax1, ymax2), max(score1), max(score2))
+	return bb
 
 def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
 	width, height = img.size
@@ -193,8 +200,8 @@ for bb1 in bb_list:
 
 
 # Show bounding boxes and scores on the picture
-# ~ for bb in bb_list:
-	# ~ draw_bb(img, bb, line_thickness=args.bb_thickness)
+for bb in bb_list:
+	draw_bb(img, bb, line_thickness=args.bb_thickness)
 
 # Show bounding boxes and scores on the picture of the GT
 # ~ if args.gt:

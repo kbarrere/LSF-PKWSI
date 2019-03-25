@@ -1,4 +1,5 @@
 import argparse
+import math
 from xmlPAGE import *
 
 
@@ -9,6 +10,7 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Print Bounding boxes for the given index file and image')
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated to the image and the lines')
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines')
+	parser.add_argument('output_index_path', help='path to the output index containing the modified scores')
 	
 	args = parser.parse_args()
 
@@ -35,6 +37,27 @@ class BB:
 	def __str__(self):
 		return "xmin="+str(self.xmin)+" ymin="+str(self.ymin)+" xmax="+str(self.xmax)+" ymax="+str(self.ymax)+" score="+str(self.score)
 
+def is_in_range(xmin, xmax, x):
+	return (xmin <= x and x <= xmax)
+
+def is_intersection_segment(xmin1, xmax1, xmin2, xmax2):
+	return (is_in_range(xmin1, xmax1, xmin2) or is_in_range(xmin1, xmax1, xmax2) or is_in_range(xmin2, xmax2, xmin1) or is_in_range(xmin2, xmax2, xmax1))
+
+def is_intersection_bb(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
+
+def number_intersection(bb, bb_list):
+	c = 0
+	for bb8 in bb_list:
+		if is_intersection_bb(bb, bb8):
+			c += 1
+	return c
+
+def sigmoid(x, a=1.0, b=0.0):
+	return 1 / (1 + math.exp(-a*x+b))
 
 
 # Reading the index file
@@ -93,11 +116,35 @@ for page_path in args.pages_path:
 					if pageID not in bbxs_dict:
 						bbxs_dict[pageID] = {}
 					if keyword not in bbxs_dict[pageID]:
-						bbxs_dict[pageID][keyword] = []
+						bbxs_dict[pageID][keyword] = ([], []) # BB_list, frame_numbers
 					
-					bbxs_dict[pageID][keyword].append(bb)
+					bbxs_dict[pageID][keyword][0].append(bb)
+					bbxs_dict[pageID][keyword][1].append((start_frame, end_frame, total_frame))
 					
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
 
 print(bbxs_dict['RS_Aicha_vorm_Wald_031_0187']['ANNA'])
+
+output = open(args.output_index_path, 'w')
+
+for pageID in bbxs_dict:
+	for keyword in bbxs_dict[pageID]:
+		bb_list = bbxs_dict[pageID][keyword][0]
+		frame_list = bbxs_dict[pageID][keyword][1]
+		for i in range(len(bb_list)):
+			bb = bb_list[i]
+			start_frame, end_frame, total_frame = frame_list[0]
+			
+			score = bb.get_score()
+			
+			overlap = number_intersection(bb, bb_list) - 1
+			
+			final_score = score * sigmoid(overlap, 1.5, 3.0)
+			
+			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(final_score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(end_frame)+'\n'
+			output.write(line_to_write)
+			
+			
+
+output.close()

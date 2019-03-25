@@ -34,6 +34,12 @@ class BB:
 	
 	def get_score(self):
 		return self.score
+	
+	def __repr__(self):
+		return "BB("+self.__str__()+")"
+	
+	def __str__(self):
+		return "xmin="+str(self.xmin)+" ymin="+str(self.ymin)+" xmax="+str(self.xmax)+" ymax="+str(self.ymax)+" score="+str(self.score)
 
 def is_in_range(xmin, xmax, x):
 	return (xmin <= x and x <= xmax)

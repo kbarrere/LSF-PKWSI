@@ -3,6 +3,7 @@ import argparse
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Output the number, percentage and stats on the scores of TP, FP and FN')
 	parser.add_argument('dat_file', help='file.dat containing the results of kws')
+	parser.add_argument('--threshold', type=float, default=0.0, help='only the pseudo-words that has a score above that threshold will be taken into account')
 	
 	args = parser.parse_args()
 
@@ -16,14 +17,18 @@ def compute_mean_std(scores):
 	for score in scores:
 		s += score
 	
-	mean = s / float(n)
+	mean = -1
+	if n > 0:
+		mean = s / float(n)
 	
 	# Compute std
 	s = 0
 	for score in scores:
 		s += (mean - score) ** 2.0
 	
-	std = (s / n) ** 0.5
+	std = -1
+	if n > 0:
+		std = (s / n) ** 0.5
 	
 	return mean, std
 	
@@ -32,6 +37,8 @@ def compute_mean_std(scores):
 
 tp_scores = []
 fp_scores = []
+fn_scores = []
+tn_scores = []
 fn_nbr = 0
 
 with open(args.dat_file, 'r') as dat_file:
@@ -44,21 +51,31 @@ with open(args.dat_file, 'r') as dat_file:
 		gtb = True if gtb_s == "1" else False
 		
 		# TP
-		if gtb and score >= 0:
+		if gtb and score >= args.threshold:
 			tp_scores.append(score)
 			
 		# FP
-		if not gtb and score >= 0:
+		if not gtb and score >= args.threshold:
 			fp_scores.append(score)
 		
 		# FN
-		if gtb and score < 0:
-			fn_nbr += 1
+		if gtb and score < args.threshold:
+			if score < 0.0:
+				fn_nbr += 1
+			else:
+				fn_scores.append(score)
+		
+		# TN
+		if not gtb and score < args.threshold:
+			tn_scores.append(score)
+			
 
 tp_mean, tp_std = compute_mean_std(tp_scores)
 fp_mean, fp_std = compute_mean_std(fp_scores)
+fn_mean, fn_std = compute_mean_std(fn_scores)
+tn_mean, tn_std = compute_mean_std(tn_scores)
 detected = len(tp_scores) + len(fp_scores)
-target_nbr = len(tp_scores) + fn_nbr
+target_nbr = len(tp_scores) + fn_nbr + len(fn_scores)
 
 print("===============================")
 print("# Detected: " + str(detected))
@@ -74,5 +91,12 @@ print("% FP: " + str(float(len(fp_scores)) / float(detected)))
 print("FP score mean: " + str(fp_mean))
 print("FP score std: " + str(fp_std))
 print("-------------------------------")
-print("# FN: " + str(fn_nbr))
-print("% FN: " + str(float(fn_nbr) / float(target_nbr)))
+print("# FN: " + str(fn_nbr + len(fn_scores)))
+print("# Positives not detected at all: " + str(fn_nbr))
+print("% FN: " + str(float(fn_nbr + len(fn_scores)) / float(target_nbr)))
+print("FN score mean: " + str(fn_mean))
+print("FN score std: " + str(fn_std))
+print("-------------------------------")
+print("# TN: " + str(len(tn_scores)))
+print("TN score mean: " + str(tn_mean))
+print("TN score std: " + str(tn_std))

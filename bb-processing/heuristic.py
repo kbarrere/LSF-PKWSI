@@ -119,22 +119,20 @@ for page_path in args.pages_path:
 						bbxs_dict[pageID][keyword] = ([], []) # BB_list, frame_numbers
 					
 					bbxs_dict[pageID][keyword][0].append(bb)
-					bbxs_dict[pageID][keyword][1].append((start_frame, end_frame, total_frame))
+					bbxs_dict[pageID][keyword][1].append((lineID, start_frame, end_frame, total_frame))
 					
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
 
-print(bbxs_dict['RS_Aicha_vorm_Wald_031_0187']['ANNA'])
-
+# Create the resulting index file
 output = open(args.output_index_path, 'w')
-
 for pageID in bbxs_dict:
 	for keyword in bbxs_dict[pageID]:
 		bb_list = bbxs_dict[pageID][keyword][0]
 		frame_list = bbxs_dict[pageID][keyword][1]
 		for i in range(len(bb_list)):
 			bb = bb_list[i]
-			start_frame, end_frame, total_frame = frame_list[0]
+			lineID, start_frame, end_frame, total_frame = frame_list[i]
 			
 			score = bb.get_score()
 			
@@ -142,9 +140,7 @@ for pageID in bbxs_dict:
 			
 			final_score = score * sigmoid(overlap, 1.5, 3.0)
 			
-			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(final_score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(end_frame)+'\n'
+			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(final_score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
 			output.write(line_to_write)
 			
-			
-
 output.close()

@@ -14,6 +14,31 @@ if __name__ == '__main__':
 	
 	args = parser.parse_args()
 
+
+
+def compute_mean_std(scores):
+	n = len(scores)
+	
+	# Compute mean
+	s = 0.0
+	for score in scores:
+		s += score
+	
+	mean = -1
+	if n > 0:
+		mean = s / float(n)
+	
+	# Compute std
+	s = 0
+	for score in scores:
+		s += (mean - score) ** 2.0
+	
+	std = -1
+	if n > 0:
+		std = (s / n) ** 0.5
+	
+	return mean, std
+
 # Store every word that is in the ground truth inside a list
 data_dict = {}
 data_file = open(args.data_path, 'r')
@@ -67,6 +92,10 @@ for line in index_file:
 			datas.append(frames_per_char)
 
 index_file.close()
+
+mean, std = compute_mean_std(datas)
+print("Computed mean: " + str(mean))
+print("Computed std: " + str(std))
 
 plt.hist(datas, bins=args.bins)
 plt.show()

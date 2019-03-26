@@ -138,7 +138,7 @@ for pageID in bbxs_dict:
 			
 			overlap = number_intersection(bb, bb_list) - 1
 			
-			final_score = score * sigmoid(overlap, 1.5, 3.0)
+			final_score = score * sigmoid(overlap, 5, 1.0)
 			
 			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(final_score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
 			output.write(line_to_write)

@@ -1,9 +1,12 @@
 import argparse
+import numpy as np
+import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Output the number, percentage and stats on the scores of TP, FP and FN')
 	parser.add_argument('dat_file', help='file.dat containing the results of kws')
 	parser.add_argument('--threshold', type=float, default=0.0, help='only the pseudo-words that has a score above that threshold will be taken into account')
+	parser.add_argument('--fp-histogram', type=int, help='Plot an histogram of the false positives with the integer passed as an argument as the delimiter between values')
 	
 	args = parser.parse_args()
 
@@ -100,3 +103,7 @@ print("-------------------------------")
 print("# TN: " + str(len(tn_scores)))
 print("TN score mean: " + str(tn_mean))
 print("TN score std: " + str(tn_std))
+
+if args.fp_histogram:
+	plt.hist(fp_scores, bins=args.fp_histogram)
+	plt.show()

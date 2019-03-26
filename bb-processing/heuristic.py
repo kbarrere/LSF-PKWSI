@@ -11,6 +11,8 @@ if __name__ == '__main__':
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated to the image and the lines')
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines')
 	parser.add_argument('output_index_path', help='path to the output index containing the modified scores')
+	parser.add_argument('--overlap-number', action='store_true', help='Multiply the score based on a sigmoid of the number of overlaping bbxs')
+	parser.add_argument('--gaussian-shape', action='store_true', help='Multiply the score based on a gaussian function depending on the number of frames of the bbx')
 	
 	args = parser.parse_args()
 
@@ -58,6 +60,12 @@ def number_intersection(bb, bb_list):
 
 def sigmoid(x, a=1.0, b=0.0):
 	return 1 / (1 + math.exp(-a*x+b))
+	
+def gaussian(x, mean, std):
+	return np.exp(- ((x - mean) ** 2) / (2 * std ** 2))
+
+def revert_gaussian(x, mean, std):
+	return 1 - gaussian(x, mean, std)
 
 
 # Reading the index file
@@ -136,11 +144,17 @@ for pageID in bbxs_dict:
 			
 			score = bb.get_score()
 			
-			overlap = number_intersection(bb, bb_list) - 1
+			if args.overlap_number:
+				overlap = number_intersection(bb, bb_list) - 1
+				score = score * sigmoid(overlap, 5, 1.0)
 			
-			final_score = score * sigmoid(overlap, 5, 1.0)
+			if args.gaussian_shape:
+				nbr_frames = end_frame - start_frame
+				len_keyword = len(keyword)
+				frames_per_char = float(nbr_frames)/float(len_keyword)
+				score = revert_gaussian(frames_per_char, 3.153, 1*1.373)
 			
-			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(final_score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
+			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
 			output.write(line_to_write)
 			
 output.close()

@@ -87,7 +87,7 @@ for line in index_file:
 			print(" - End frame: " + end_frame_str)
 			print(" - Number of frams per char: " + str(frames_per_char))
 			print("Bounding box not taken into account")
-			print("If this is not an expected result, you should consider reducing the argument --max.")
+			print("If this is not an expected result, you should consider increasing the argument --max.")
 		else:
 			datas.append(frames_per_char)
 

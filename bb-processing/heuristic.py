@@ -12,6 +12,7 @@ if __name__ == '__main__':
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines')
 	parser.add_argument('output_index_path', help='path to the output index containing the modified scores')
 	parser.add_argument('--overlap-number', action='store_true', help='Multiply the score based on a sigmoid of the number of overlaping bbxs')
+	parser.add_argument('--overlap-percent', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs')
 	parser.add_argument('--gaussian-shape', action='store_true', help='Multiply the score based on a gaussian function depending on the number of frames of the bbx')
 	
 	args = parser.parse_args()
@@ -58,14 +59,34 @@ def number_intersection(bb, bb_list):
 			c += 1
 	return c
 
+def overlap_percent(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	xmin = max(xmin1, xmin2)
+	ymin = max(ymin1, ymin2)
+	xmax = min(xmax1, xmax2)
+	ymax = min(ymax1, ymax2)
+	
+	base_area = (xmax1 - xmin1) * (ymax1 - ymin1)
+	area = (xmax - xmin) * (ymax - ymin)
+	
+	percentage = float(area)/float(base_area)
+	
+	return percentage
+
+def total_overlap_percent(bb, bb_list):
+	c = 00.
+	for bb8 in bb_list:
+		if is_intersection_bb(bb, bb8):
+			c += overlap_percent(bb, bb8)
+	return c
+
 def sigmoid(x, a=1.0, b=0.0):
 	return 1 / (1 + math.exp(-a*x+b))
 	
 def gaussian(x, mean, std):
 	return np.exp(- ((x - mean) ** 2) / (2 * std ** 2))
-
-def revert_gaussian(x, mean, std):
-	return 1 - gaussian(x, mean, std)
 
 
 # Reading the index file
@@ -148,11 +169,16 @@ for pageID in bbxs_dict:
 				overlap = number_intersection(bb, bb_list) - 1
 				score = score * sigmoid(overlap, 5, 1.0)
 			
+			if args.overlap_percent:
+				overlap_percent = total_overlap_percent(bb, bb_list):
+				score = score * sigmoid(overlap_percent, 1, 0)
+			
 			if args.gaussian_shape:
 				nbr_frames = end_frame - start_frame
 				len_keyword = len(keyword)
 				frames_per_char = float(nbr_frames)/float(len_keyword)
-				score = revert_gaussian(frames_per_char, 3.153, 1*1.373)
+				score = score*gaussian(frames_per_char, 0, 62) # For large bbxs
+				score = score * sigmoid(frames_per_char, 3, 0) # For small bbxs
 			
 			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
 			output.write(line_to_write)

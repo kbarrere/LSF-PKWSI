@@ -11,6 +11,7 @@ if __name__ == '__main__':
 	parser.add_argument('data_path', help='path to index file containing keywords, score and positioninng in the lines')
 	parser.add_argument('--bins', default=10, type=int, help='Number of delimiter')
 	parser.add_argument('--max', default=20.0, type=float, help='Max value between which the results are not taken into account')
+	parser.add_argument('--quiet', action='store_true', help='Do not print anything')
 	
 	args = parser.parse_args()
 
@@ -51,7 +52,8 @@ for line in data_file:
 	if gtb_str == '1':
 		gtb = True
 	
-	if gtb:
+	# ~ if gtb:
+	if True:
 		if pageID not in data_dict:
 			data_dict[pageID] = {}
 		if lineID not in data_dict[pageID]:
@@ -79,17 +81,21 @@ for line in index_file:
 		len_keyword = len(keyword)
 		frames_per_char = float(nbr_frames)/float(len_keyword)
 		if frames_per_char > args.max:
-			print("Warning very high value !")
-			print(" - PageID: " + pageID)
-			print(" - LineID: " + lineID)
-			print(" - Keyword: " + keyword)
-			print(" - Start frame: " + start_frame_str)
-			print(" - End frame: " + end_frame_str)
-			print(" - Number of frams per char: " + str(frames_per_char))
-			print("Bounding box not taken into account")
-			print("If this is not an expected result, you should consider increasing the argument --max.")
+			if not args.quiet:
+				print("Warning very high value !")
+				print(" - PageID: " + pageID)
+				print(" - LineID: " + lineID)
+				print(" - Keyword: " + keyword)
+				print(" - Start frame: " + start_frame_str)
+				print(" - End frame: " + end_frame_str)
+				print(" - Number of frams per char: " + str(frames_per_char))
+				print("Bounding box not taken into account")
+				print("If this is not an expected result, you should consider increasing the argument --max.")
 		else:
 			datas.append(frames_per_char)
+
+if not args.quiet:
+	print("Detected " + str(len(datas)) + " bounding boxes")
 
 index_file.close()
 

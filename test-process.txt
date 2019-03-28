@@ -202,8 +202,10 @@ wait;
 # Require: WordGraph2Index 
 # git clone https://github.com/PRHLT/WordGraph2Index.git
 
-# Obtaining raw index
-for f in SLFs/*.lat.gz; do F=$(basename $f .lat.gz); echo $F 1>&2; WordGraph2Index -i $f -p 0.0 -s 1.0 -t 100.0 -d 1.0 -z w | awk -v ln=$F '$0!~/^#|<s>|<\/s>|!NULL/{print ln,$2,$3,$4,$5,$6}'; done | gzip -9 -c > index_raw.idx.gz
+# Obtaining raw index, which includes pseudo words and locations
+for f in SLFs/*.lat.gz; do F=$(basename $f .lat.gz); echo $F 1>&2;
+WordGraph2Index -i $f -p 0.0 -s 1.0 -t 100.0 -d 1.0 -z w | awk -v ln=$F '$0!~/^#|<s>|<\/s>|!NULL/{print ln,$2,$3,$4,$5,$6}'; done |
+awk 'BEGIN{while (getline < "INF/mapCharsTranslit.inf" > 0) if (NF>=3 && $3==1) SP[$2]=""}{if (!($2 in SP)) print}' | gzip -9 -c > index_raw.idx.gz
 
 # Filtering out the index for evaluation: take into account the keywords and the line IDs 
 zcat index_raw.idx.gz | awk 'BEGIN{while (getline < "INF/keywords_test.lst" > 0) W[$1]=""}{if ($2 in W) print}' > index_test.idx

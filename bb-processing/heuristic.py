@@ -77,10 +77,13 @@ def overlap_percent(bb1, bb2):
 	
 	return percentage
 
-def total_overlap_percent(bb, bb_list):
+def total_overlap_percent(bb, bb_list, debug=False):
 	c = 0.
 	for bb8 in bb_list:
 		if is_intersection_bb(bb, bb8):
+			if debug:
+				print("Overlap with " + str(bb8))
+				print("Value: " + str(overlap_percent(bb, bb8)))
 			c += overlap_percent(bb, bb8)
 	return c
 
@@ -172,8 +175,8 @@ for pageID in bbxs_dict:
 				score = score * sigmoid(overlap, 5, 1.0)
 			
 			if args.overlap_percent:
-				overlap100 = total_overlap_percent(bb, bb_list)
-				score = score * sigmoid(overlap100, 1, 0)
+				overlap100 = total_overlap_percent(bb, bb_list) - 1.0
+				score = score * sigmoid(overlap100, 8, 2.75)
 			
 			if args.gaussian_shape:
 				nbr_frames = end_frame - start_frame

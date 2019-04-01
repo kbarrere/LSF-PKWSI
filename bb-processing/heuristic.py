@@ -13,6 +13,7 @@ if __name__ == '__main__':
 	parser.add_argument('output_index_path', help='path to the output index containing the modified scores')
 	parser.add_argument('--overlap-number', action='store_true', help='Multiply the score based on a sigmoid of the number of overlaping bbxs')
 	parser.add_argument('--overlap-percent', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs')
+	parser.add_argument('--overlap-scores', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores')
 	parser.add_argument('--gaussian-shape', action='store_true', help='Multiply the score based on a gaussian function depending on the number of frames of the bbx')
 	
 	args = parser.parse_args()
@@ -85,6 +86,20 @@ def total_overlap_percent(bb, bb_list, debug=False):
 				print("Overlap with " + str(bb8))
 				print("Value: " + str(overlap_percent(bb, bb8)))
 			c += overlap_percent(bb, bb8)
+	return c
+
+def overlap_score(bb1, bb2):
+	overlapper100 = overlap_percent(bb1, bb2)
+	return overlapper100*bb2.get_score()
+
+def total_overlap_score(bb, bb_list, debug=False):
+	c = 0.
+	for bb8 in bb_list:
+		if is_intersection_bb(bb, bb8):
+			if debug:
+				print("Overlap with " + str(bb8))
+				print("Value: " + str(overlap_score(bb, bb8)))
+			c += overlap_score(bb, bb8)
 	return c
 
 def sigmoid(x, a=1.0, b=0.0):
@@ -177,6 +192,10 @@ for pageID in bbxs_dict:
 			if args.overlap_percent:
 				overlap100 = total_overlap_percent(bb, bb_list) - 1.0
 				score = score * sigmoid(overlap100, 8, 2.75)
+			
+			if args.overlap_score:
+				overlapscore = total_overlap_score(bb, bb_list) - bb.get_score()
+				score = score * sigmoid(overlapscore, 1, 0)
 			
 			if args.gaussian_shape:
 				nbr_frames = end_frame - start_frame

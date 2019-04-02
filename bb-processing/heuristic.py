@@ -13,7 +13,7 @@ if __name__ == '__main__':
 	parser.add_argument('output_index_path', help='path to the output index containing the modified scores')
 	parser.add_argument('--overlap-number', action='store_true', help='Multiply the score based on a sigmoid of the number of overlaping bbxs')
 	parser.add_argument('--overlap-percent', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs')
-	parser.add_argument('--overlap-scores', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores')
+	parser.add_argument('--overlap-score', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores')
 	parser.add_argument('--gaussian-shape', action='store_true', help='Multiply the score based on a gaussian function depending on the number of frames of the bbx')
 	
 	args = parser.parse_args()
@@ -195,7 +195,8 @@ for pageID in bbxs_dict:
 			
 			if args.overlap_score:
 				overlapscore = total_overlap_score(bb, bb_list) - bb.get_score()
-				score = score * sigmoid(overlapscore, 1, 0)
+				score = score * sigmoid(overlapscore, 25, 12)
+				# ~ score = score if overlapscore > 0.30 else 0.0
 			
 			if args.gaussian_shape:
 				nbr_frames = end_frame - start_frame

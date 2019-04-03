@@ -14,6 +14,7 @@ if __name__ == '__main__':
 	parser.add_argument('--overlap-number', action='store_true', help='Multiply the score based on a sigmoid of the number of overlaping bbxs')
 	parser.add_argument('--overlap-percent', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs')
 	parser.add_argument('--overlap-score', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores')
+	parser.add_argument('--overlap-score-union', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores, taking into account the union of overlaping bbxs')
 	parser.add_argument('--gaussian-shape', action='store_true', help='Multiply the score based on a gaussian function depending on the number of frames of the bbx')
 	
 	args = parser.parse_args()
@@ -102,6 +103,39 @@ def total_overlap_score(bb, bb_list, debug=False):
 			c += overlap_score(bb, bb8)
 	return c
 
+def overlap_percent_union(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	xmin = max(xmin1, xmin2)
+	ymin = max(ymin1, ymin2)
+	xmax = min(xmax1, xmax2)
+	ymax = min(ymax1, ymax2)
+	
+	base_area_1 = (xmax1 - xmin1) * (ymax1 - ymin1)
+	base_area_2 = (xmax2 - xmin2) * (ymax2 - ymin2)
+	area = (xmax - xmin) * (ymax - ymin)
+	
+	percentage = 0.0
+	if base_area_1+base_area_2-area > 0.0:
+		percentage = float(area)/(float(base_area_1+base_area_2-area))
+	
+	return percentage
+
+def overlap_score_union(bb1, bb2):
+	overlapper100 = overlap_percent_union(bb1, bb2)
+	return overlapper100*bb2.get_score()
+
+def total_overlap_score_union(bb, bb_list, debug=False):
+	c = 0.
+	for bb8 in bb_list:
+		if is_intersection_bb(bb, bb8):
+			if debug:
+				print("Overlap with " + str(bb8))
+				print("Value: " + str(overlap_score_union(bb, bb8)))
+			c += overlap_score_union(bb, bb8)
+	return c
+
 def sigmoid(x, a=1.0, b=0.0):
 	return 1 / (1 + math.exp(-a*x+b))
 	
@@ -185,25 +219,38 @@ for pageID in bbxs_dict:
 			
 			score = bb.get_score()
 			
+			pbon = 1.0
 			if args.overlap_number:
 				overlap = number_intersection(bb, bb_list) - 1
-				score = score * sigmoid(overlap, 5, 1.0)
+				pbon = sigmoid(overlap, 5, 1.0)
 			
+			pbop = 1.0
 			if args.overlap_percent:
 				overlap100 = total_overlap_percent(bb, bb_list) - 1.0
-				score = score * sigmoid(overlap100, 8, 2.75)
+				pbop = sigmoid(overlap100, 8, 2.75)
 			
+			pbos = 1.0
 			if args.overlap_score:
 				overlapscore = total_overlap_score(bb, bb_list) - bb.get_score()
-				score = score * sigmoid(overlapscore, 25, 12)
-				# ~ score = score if overlapscore > 0.30 else 0.0
+				pbos = sigmoid(overlapscore, 25, 12.5)
+				# ~ pbos = pbos if overlapscore > 0.30 else 0.0
 			
+			pbosu = 1.0
+			if args.overlap_score_union:
+				overlapscore = total_overlap_score_union(bb, bb_list) - bb.get_score()
+				# ~ pbosu = sigmoid(overlapscore, 42, 18)
+				pbosu = pbosu if overlapscore > 0.23725 else 0.0
+			
+			pbgs = 1.0
 			if args.gaussian_shape:
 				nbr_frames = end_frame - start_frame
 				len_keyword = len(keyword)
 				frames_per_char = float(nbr_frames)/float(len_keyword)
-				score = score*gaussian(frames_per_char, 0, 62) # For large bbxs
-				score = score * sigmoid(frames_per_char, 3, 0) # For small bbxs
+				pbgs = gaussian(frames_per_char, 0, 62) # For large bbxs
+				pbgs = pbgs * sigmoid(frames_per_char, 3, 0) # For small bbxs
+			
+			pb = pbon * pbop * pbos * pbosu * pbgs
+			score = pb * score
 			
 			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
 			output.write(line_to_write)

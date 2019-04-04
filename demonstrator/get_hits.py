@@ -154,9 +154,10 @@ for page_path in args.pages_path:
 						bbxs_gt_list = bbxs_dict_gt[pageID][keyword]
 						
 						for bb8 in bbxs_gt_list:
-							percentagearea = overlap_percent(bb, bb8)
-							if percentagearea >= args.threshold:
-								hit = 1
+							if is_intersection_bb(bb, bb8):
+								percentagearea = overlap_percent(bb, bb8)
+								if percentagearea >= args.threshold:
+									hit = 1
 					
 					line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
 					output_file.write(line_to_write)

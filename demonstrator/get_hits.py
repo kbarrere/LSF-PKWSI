@@ -11,7 +11,8 @@ if __name__ == '__main__':
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated to the image and the lines')
 	parser.add_argument('gt', help='path to the Ground Truth (GT)')
 	parser.add_argument('output_index', help='path to the outputted index')
-	parser.add_argument('--threshold', type=float, default=0.5, help='If a bounding boxes has more % of its area in one line of the GT containing this keyword, then consider it has a hit')
+	parser.add_argument('--threshold', type=float, default=0.5, help='If a bounding boxes has more percent of its area in one line of the GT containing this keyword, then consider it has a hit')
+	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
 
 	args = parser.parse_args()
 
@@ -83,11 +84,12 @@ with open(args.index_path, 'r') as index_file:
 		end_frame = int(end_frame_str)
 		total_frame = int(total_frame_str)
 		
-		if pageID not in index_dict:
-			index_dict[pageID] = {}
-		if lineID not in index_dict[pageID]:
-			index_dict[pageID][lineID] = []
-		index_dict[pageID][lineID].append([keyword, score, start_frame, end_frame, total_frame])
+		if score >= args.minimum_score:
+			if pageID not in index_dict:
+				index_dict[pageID] = {}
+			if lineID not in index_dict[pageID]:
+				index_dict[pageID][lineID] = []
+			index_dict[pageID][lineID].append([keyword, score, start_frame, end_frame, total_frame])
 
 # Read the GT:
 bbxs_dict_gt = {}

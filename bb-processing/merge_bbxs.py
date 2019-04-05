@@ -9,6 +9,8 @@ if __name__ == '__main__':
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated with the index')
 	parser.add_argument('output_index', help='path to the outputted index. in the format pageID keyword score xmin ymin xmax ymax')
 	parser.add_argument('--rec', type=int, default=1, help='Number of recursive merging')
+	parser.add_argument('--min-overlap', type=float, default=0.5, help='Minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
+	parser.add_argument('--min-intersection', type=float, default=0.2, help='Minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	
 	args = parser.parse_args()
 
@@ -182,9 +184,7 @@ for pageID in bbxs_dict:
 		bb_list = bbxs_dict[pageID][keyword]
 		
 		for i in range(args.rec):
-			bb_list_list_tmp2 = []
-			
-			nbr_new = 0
+			bbxs_grps = []
 			
 			for bb1 in bb_list:
 				
@@ -192,47 +192,51 @@ for pageID in bbxs_dict:
 				is_bb_alone = True
 				for bb2 in bb_list:
 					overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
-					# ~ if is_intersection_bb(bb1, bb2) and not bb_equal(bb1, bb2):
-					if is_intersection_bb(bb1, bb2) and overlap > 0.5 and not bb_equal(bb1, bb2):
+					if is_intersection_bb(bb1, bb2) and overlap > args.min_overlap and not bb_equal(bb1, bb2):
 						is_bb_alone = False
 						
 						# Try to insert that couple of bounding box in every existing group of bounding box
 						is_couple_new = True
-						for bb_list_tmp2 in bb_list_list_tmp2:
+						for bbxs_grp in bbxs_grps:
 							is_bbs_match = True
 							
-							bbxs = []
-							nbr_true_intersection_1 = 0
-							nbr_true_intersection_2 = 0
-							for bb in bb_list_tmp2:
-								bbxs.append(bb)
-								if is_intersection_bb(bb1, bb):
-									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
-									# ~ if overlap >= 0.5:
-										# ~ nbr_true_intersection_1 += 1
-									nbr_true_intersection_1 += 1
-								if is_intersection_bb(bb2, bb):
-									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
-									# ~ if overlap >= 0.5:
-										# ~ nbr_true_intersection_2 += 1
-									nbr_true_intersection_2 += 1
+							curr_grp_to_test = []
+							nbr_intersection1 = 0
+							nbr_intersection2 = 0
 							
-							if (nbr_true_intersection_1 >= 1 and nbr_true_intersection_2 >= 1) or len(bbxs) == 0:
-								if bb1 not in bbxs:
-									bbxs.append(bb1)
-								if bb2 not in bbxs:
-									bbxs.append(bb2)
+							# Construct the curr group to test
+							for bb in bbxs_grp:
+								curr_grp_to_test.append(bb)
+								
+								# Count the number of intersections the couple of bbxs have with the group
+								if is_intersection_bb(bb1, bb):
+									overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									if overlap >= args.min_overlap:
+										nbr_intersection1 += 1
+								if is_intersection_bb(bb2, bb):
+									overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									if overlap >= args.min_overlap:
+										nbr_intersection2 += 1
+							
+							# Minimum the couple has to have an intersection with 1 bbx in the group
+							if (nbr_intersection1 >= 1 and nbr_intersection2 >= 1):
+								
+								# Add the couple in the current group to test if they are not already inside
+								if bb1 not in curr_grp_to_test:
+									curr_grp_to_test.append(bb1)
+								if bb2 not in curr_grp_to_test:
+									curr_grp_to_test.append(bb2)
 									
-								nbr_bbxs = len(bbxs)
-								for bb_tmp1 in bbxs:
+								nbr_bbxs = len(curr_grp_to_test)
+								for bb_tmp1 in curr_grp_to_test:
 									nbr_intersection = -1
-									for bb_tmp2 in bbxs:
+									for bb_tmp2 in curr_grp_to_test:
 										if is_intersection_bb(bb_tmp1, bb_tmp2):
-											overlap100 = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
-											if overlap100 >= 0.5:
+											overlap = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
+											if overlap >= args.min_overlap:
 												nbr_intersection += 1
 									
-									if nbr_intersection < 0.2 * (nbr_bbxs-1):
+									if nbr_intersection < args.min_intersection * (nbr_bbxs-1):
 										is_bbs_match = False
 							else:
 								is_bbs_match = False
@@ -240,25 +244,23 @@ for pageID in bbxs_dict:
 							# Insert the couple in that group
 							if is_bbs_match:
 								is_couple_new = False
-								if bb1 not in bb_list_tmp2:
-									nbr_new += 1
-									bb_list_tmp2.append(bb1)
-								if bb2 not in bb_list_tmp2:
-									nbr_new += 1
-									bb_list_tmp2.append(bb2)
+								if bb1 not in bbxs_grp:
+									bbxs_grp.append(bb1)
+								if bb2 not in bbxs_grp:
+									bbxs_grp.append(bb2)
 						
 						# Create a new group is the couple match nowhere
 						if is_couple_new:
-							bb_list_list_tmp2.append([bb1, bb2])
+							bbxs_grps.append([bb1, bb2])
 					
 				if is_bb_alone:
-					bb_list_list_tmp2.append([bb1])
+					bbxs_grps.append([bb1])
 			
 			# Merge the bounding boxes of one group into one big one
 			merged_bb_list = []
 			
-			for bb_list_tmp2 in bb_list_list_tmp2:
-				new_bb = merge_bb_group(bb_list_tmp2)
+			for bbxs_grp in bbxs_grps:
+				new_bb = merge_bb_group(bbxs_grp)
 				merged_bb_list.append(new_bb)
 
 			bb_list = merged_bb_list

@@ -109,17 +109,56 @@ def new_merge_bb_group(bb_list):
 		
 		max_score = max(max_score, score)
 	
+	# Temporary solution to avoid division by 0
+	if total_mass == 0.0:
+		return bb_list[0]
+	
 	center_x = total_x / total_mass
 	center_y = total_y / total_mass
 	center_w = total_w / total_mass
 	center_h = total_h / total_mass
 	
-	xmin = int(center_x - center_w / 2)
-	xmax = int(center_x + center_w / 2)
-	ymin = int(center_y - center_h / 2)
-	ymax = int(center_y + center_h / 2)
+	# ~ xmin = int(center_x - center_w / 2)
+	# ~ xmax = int(center_x + center_w / 2)
+	# ~ ymin = int(center_y - center_h / 2)
+	# ~ ymax = int(center_y + center_h / 2)
+	xmin = center_x - center_w / 2
+	xmax = center_x + center_w / 2
+	ymin = center_y - center_h / 2
+	ymax = center_y + center_h / 2
 	
-	bb = BB(xmin, ymin, xmax, ymax, max_score)
+	# Trying to enlarge a bit the merged bounding box based on it's position compared to the bbxs creating it
+	# ~ xmin_m = 0.0
+	# ~ ymin_m = 0.0
+	# ~ xmax_m = 0.0
+	# ~ ymax_m = 0.0
+	# ~ for bb in bb_list:
+		# ~ xminbb, yminbb, xmaxbb, ymaxbb = bb.get_coords()
+		# ~ scorebb = bb.get_score()
+		# ~ xmin_m += scorebb*abs(xmin - xminbb)
+		# ~ ymin_m += scorebb*abs(ymin - yminbb)
+		# ~ xmax_m += scorebb*abs(xmax - xmaxbb)
+		# ~ ymax_m += scorebb*abs(ymax - ymaxbb)
+		# ~ if xmin > xminbb:
+			# ~ xmin_m += scorebb * (xmin - xminbb)
+		# ~ if ymin > yminbb:
+			# ~ ymin_m += scorebb * (ymin - yminbb)
+		# ~ if xmax < xmaxbb:
+			# ~ xmax_m += scorebb * (xmax - xmaxbb)
+		# ~ if ymax < ymaxbb:
+			# ~ ymax_m += scorebb * (ymax - ymaxbb)
+	
+	# ~ xminvar = xmin_m / total_mass
+	# ~ yminvar = ymin_m / total_mass
+	# ~ xmaxvar = xmax_m / total_mass
+	# ~ ymaxvar = ymax_m / total_mass
+	
+	# ~ xmin -= xminvar
+	# ~ ymin -= yminvar
+	# ~ xmax += xmaxvar
+	# ~ ymax += ymaxvar
+	
+	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
 	return bb
 	
 def bb_equal(bb1, bb2):
@@ -289,12 +328,12 @@ for i in range(args.new_merge):
 	bb_list_list_tmp2 = []
 	
 	nbr_new = 0
-
+	
 	for bb1 in bb_list_tmp1:
 		
 		# Search for a bb that has an intersection with current bb
 		is_bb_alone = True
-		for bb2 in bb_list:
+		for bb2 in bb_list_tmp1:
 			overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
 			# ~ if is_intersection_bb(bb1, bb2) and not bb_equal(bb1, bb2):
 			if is_intersection_bb(bb1, bb2) and overlap > 0.5 and not bb_equal(bb1, bb2):
@@ -343,25 +382,40 @@ for i in range(args.new_merge):
 						# ~ is_bbs_match = False
 						# ~ is_couple_new = False
 					bbxs = []
+					nbr_true_intersection_1 = 0
+					nbr_true_intersection_2 = 0
 					for bb in bb_list_tmp2:
 						bbxs.append(bb)
+						if is_intersection_bb(bb1, bb):
+							# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+							# ~ if overlap >= 0.5:
+								# ~ nbr_true_intersection_1 += 1
+							nbr_true_intersection_1 += 1
+						if is_intersection_bb(bb2, bb):
+							# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+							# ~ if overlap >= 0.5:
+								# ~ nbr_true_intersection_2 += 1
+							nbr_true_intersection_2 += 1
 					
-					if bb1 not in bbxs:
-						bbxs.append(bb1)
-					if bb2 not in bbxs:
-						bbxs.append(bb2)
-						
-					nbr_bbxs = len(bbxs)
-					for bb_tmp1 in bbxs:
-						nbr_intersection = -1
-						for bb_tmp2 in bbxs:
-							if is_intersection_bb(bb_tmp1, bb_tmp2):
-								overlap100 = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
-								if overlap100 >= 0.5:
-									nbr_intersection += 1
-						
-						if nbr_intersection < 0.2 * (nbr_bbxs-1):
-							is_bbs_match = False
+					if (nbr_true_intersection_1 >= 1 and nbr_true_intersection_2 >= 1) or len(bbxs) == 0:
+						if bb1 not in bbxs:
+							bbxs.append(bb1)
+						if bb2 not in bbxs:
+							bbxs.append(bb2)
+							
+						nbr_bbxs = len(bbxs)
+						for bb_tmp1 in bbxs:
+							nbr_intersection = -1
+							for bb_tmp2 in bbxs:
+								if is_intersection_bb(bb_tmp1, bb_tmp2):
+									overlap100 = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
+									if overlap100 >= 0.5:
+										nbr_intersection += 1
+							
+							if nbr_intersection < 0.2 * (nbr_bbxs-1):
+								is_bbs_match = False
+					else:
+						is_bbs_match = False
 					
 					# Insert the couple in that group
 					if is_bbs_match:
@@ -384,15 +438,19 @@ for i in range(args.new_merge):
 	merged_bb_list = []
 	
 	for bb_list_tmp2 in bb_list_list_tmp2:
-		merged_bb_list.append(new_merge_bb_group(bb_list_tmp2))
+		new_bb = new_merge_bb_group(bb_list_tmp2)
+		merged_bb_list.append(new_bb)
 
 	bb_list_tmp1 = merged_bb_list
 
 bb_list = bb_list_tmp1
 
+
 # Show bounding boxes and scores on the picture
 for bb in bb_list:
 	draw_bb(img, bb, line_thickness=args.bb_thickness)
+	
+	xmin, ymin, xmax, ymax = bb.get_coords()
 
 # Show bounding boxes and scores on the picture of the GT
 if args.gt:

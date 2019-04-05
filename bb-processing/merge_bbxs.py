@@ -8,9 +8,10 @@ if __name__ == '__main__':
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines (in the format pageID.LineID keyword score startframe endframe totalframe')
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated with the index')
 	parser.add_argument('output_index', help='path to the outputted index. in the format pageID keyword score xmin ymin xmax ymax')
-	parser.add_argument('--rec', type=int, default=1, help='Number of recursive merging')
-	parser.add_argument('--min-overlap', type=float, default=0.5, help='Minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
-	parser.add_argument('--min-intersection', type=float, default=0.2, help='Minimum percentage of a bb intersecting with other bbxs in a group for a merge')
+	parser.add_argument('--rec', type=int, default=-1, help='number of recursive merging. A value of -1 (Default) means go until it has converged')
+	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
+	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
+	parser.add_argument('--verbose', action='store_true', help='print the current page, keyword and step')
 	
 	args = parser.parse_args()
 
@@ -183,7 +184,16 @@ for pageID in bbxs_dict:
 	for keyword in bbxs_dict[pageID]:
 		bb_list = bbxs_dict[pageID][keyword]
 		
-		for i in range(args.rec):
+		previous_len = 0
+		i = 0
+		
+		while (previous_len != len(bb_list)) and ( i < args.rec or args.rec == -1):
+			i += 1
+			previous_len = len(bb_list)
+			
+			if args.verbose:
+				print(pageID + " - " + keyword + " - Step " + str(i))
+			
 			bbxs_grps = []
 			
 			for bb1 in bb_list:

@@ -7,7 +7,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Merge Bounding boxes')
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines (in the format pageID.LineID keyword score startframe endframe totalframe')
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated with the index')
-	parser.add_argument('output_index', help='path to the outputted index. in the format pageID keyword  proba xmin ymin xmax ymax')
+	parser.add_argument('output_index', help='path to the outputted index. in the format pageID keyword score xmin ymin xmax ymax')
+	parser.add_argument('--rec', type=int, default=1, help='Number of recursive merging')
 	
 	args = parser.parse_args()
 
@@ -70,7 +71,7 @@ def overlap_percent(bb1, bb2):
 	
 	return percentage
 
-def new_merge_bb_group(bb_list):
+def merge_bb_group(bb_list):
 	total_mass = 0.0
 	total_x = 0.0
 	total_y = 0.0
@@ -167,12 +168,106 @@ for page_path in args.pages_path:
 					if pageID not in bbxs_dict:
 						bbxs_dict[pageID] = {}
 					if keyword not in bbxs_dict[pageID]:
-						bbxs_dict[pageID][keyword] = ([], []) # BB_list, frame_numbers
+						bbxs_dict[pageID][keyword] = []
 					
-					bbxs_dict[pageID][keyword][0].append(bb)
-					bbxs_dict[pageID][keyword][1].append((lineID, start_frame, end_frame, total_frame))
+					bbxs_dict[pageID][keyword].append(bb)
 					
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
 
-print(bbxs_dict)
+output = open(args.output_index, 'w')
+
+for pageID in bbxs_dict:
+	for keyword in bbxs_dict[pageID]:
+		bb_list = bbxs_dict[pageID][keyword]
+		
+		for i in range(args.rec):
+			bb_list_list_tmp2 = []
+			
+			nbr_new = 0
+			
+			for bb1 in bb_list:
+				
+				# Search for a bb that has an intersection with current bb
+				is_bb_alone = True
+				for bb2 in bb_list:
+					overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
+					# ~ if is_intersection_bb(bb1, bb2) and not bb_equal(bb1, bb2):
+					if is_intersection_bb(bb1, bb2) and overlap > 0.5 and not bb_equal(bb1, bb2):
+						is_bb_alone = False
+						
+						# Try to insert that couple of bounding box in every existing group of bounding box
+						is_couple_new = True
+						for bb_list_tmp2 in bb_list_list_tmp2:
+							is_bbs_match = True
+							
+							bbxs = []
+							nbr_true_intersection_1 = 0
+							nbr_true_intersection_2 = 0
+							for bb in bb_list_tmp2:
+								bbxs.append(bb)
+								if is_intersection_bb(bb1, bb):
+									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									# ~ if overlap >= 0.5:
+										# ~ nbr_true_intersection_1 += 1
+									nbr_true_intersection_1 += 1
+								if is_intersection_bb(bb2, bb):
+									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									# ~ if overlap >= 0.5:
+										# ~ nbr_true_intersection_2 += 1
+									nbr_true_intersection_2 += 1
+							
+							if (nbr_true_intersection_1 >= 1 and nbr_true_intersection_2 >= 1) or len(bbxs) == 0:
+								if bb1 not in bbxs:
+									bbxs.append(bb1)
+								if bb2 not in bbxs:
+									bbxs.append(bb2)
+									
+								nbr_bbxs = len(bbxs)
+								for bb_tmp1 in bbxs:
+									nbr_intersection = -1
+									for bb_tmp2 in bbxs:
+										if is_intersection_bb(bb_tmp1, bb_tmp2):
+											overlap100 = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
+											if overlap100 >= 0.5:
+												nbr_intersection += 1
+									
+									if nbr_intersection < 0.2 * (nbr_bbxs-1):
+										is_bbs_match = False
+							else:
+								is_bbs_match = False
+							
+							# Insert the couple in that group
+							if is_bbs_match:
+								is_couple_new = False
+								if bb1 not in bb_list_tmp2:
+									nbr_new += 1
+									bb_list_tmp2.append(bb1)
+								if bb2 not in bb_list_tmp2:
+									nbr_new += 1
+									bb_list_tmp2.append(bb2)
+						
+						# Create a new group is the couple match nowhere
+						if is_couple_new:
+							bb_list_list_tmp2.append([bb1, bb2])
+					
+				if is_bb_alone:
+					bb_list_list_tmp2.append([bb1])
+			
+			# Merge the bounding boxes of one group into one big one
+			merged_bb_list = []
+			
+			for bb_list_tmp2 in bb_list_list_tmp2:
+				new_bb = merge_bb_group(bb_list_tmp2)
+				merged_bb_list.append(new_bb)
+
+			bb_list = merged_bb_list
+		
+		for bb in bb_list:
+			# pageID keyword score xmin ymin xmax ymax
+			xmin, ymin, xmax, ymax = bb.get_coords()
+			score = bb.get_score()
+			line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
+			output.write(line_to_write)
+
+output.close()

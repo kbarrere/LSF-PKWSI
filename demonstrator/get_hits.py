@@ -72,6 +72,7 @@ def overlap_percent(bb1, bb2):
 
 
 # Read the index
+pageIDs = []
 index_dict = {}
 with open(args.index_path, 'r') as index_file:
 	for line in index_file:
@@ -90,6 +91,8 @@ with open(args.index_path, 'r') as index_file:
 			if lineID not in index_dict[pageID]:
 				index_dict[pageID][lineID] = []
 			index_dict[pageID][lineID].append([keyword, score, start_frame, end_frame, total_frame])
+			if pageID not in pageIDs:
+				pageIDs.append(pageID)
 
 # Read the GT:
 bbxs_dict_gt = {}
@@ -107,12 +110,14 @@ for line in gt_file:
 	bb = BB(xmin, ymin, xmax, ymax, 1.0)
 	
 	for keyword in keywords:
-		if pageID not in bbxs_dict_gt:
-			bbxs_dict_gt[pageID] = {}
-		if keyword not in bbxs_dict_gt[pageID]:
-			bbxs_dict_gt[pageID][keyword] = []
-		
-		bbxs_dict_gt[pageID][keyword].append(bb)
+		if pageID in pageIDs:
+			if pageID not in bbxs_dict_gt:
+				bbxs_dict_gt[pageID] = {}
+			if keyword not in bbxs_dict_gt[pageID]:
+				bbxs_dict_gt[pageID][keyword] = ([], []) # List of BBxs, and a list of boolean to kwow if the keyword has been detected
+			
+			bbxs_dict_gt[pageID][keyword][0].append(bb)
+			bbxs_dict_gt[pageID][keyword][1].append(False)
 
 gt_file.close()
 
@@ -153,11 +158,14 @@ for page_path in args.pages_path:
 					if pageID in bbxs_dict_gt and keyword in bbxs_dict_gt[pageID]:
 						bbxs_gt_list = bbxs_dict_gt[pageID][keyword]
 						
-						for bb8 in bbxs_gt_list:
+						# ~ for bb8 in bbxs_gt_list:
+						for i in range(len(bbxs_gt_list[0])):
+							bb8 = bbxs_gt_list[0][i]
 							if is_intersection_bb(bb, bb8):
 								percentagearea = overlap_percent(bb, bb8)
 								if percentagearea >= args.threshold:
 									hit = 1
+									bbxs_dict_gt[pageID][keyword][1][i] = True # To tell that the keyword has been detected once
 					
 					line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
 					output_file.write(line_to_write)
@@ -165,5 +173,17 @@ for page_path in args.pages_path:
 					
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
+
+# Get the keywords missed
+for pageID in bbxs_dict_gt:
+	for keyword in bbxs_dict_gt[pageID]:
+		for i in range(len(bbxs_dict_gt[pageID][keyword][0])):
+			if not bbxs_dict_gt[pageID][keyword][1][i]:
+				bb = bbxs_dict_gt[pageID][keyword][0][i]
+				xmin, ymin, xmax, ymax = bb.get_coords()
+				
+				# Write the misses
+				line_to_write = pageID + ' ' + keyword + ' ' + '1' + ' ' + '-1' + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
+				output_file.write(line_to_write)
 
 output_file.close()

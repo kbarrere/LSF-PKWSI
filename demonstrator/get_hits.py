@@ -85,7 +85,7 @@ with open(args.index_path, 'r') as index_file:
 		end_frame = int(end_frame_str)
 		total_frame = int(total_frame_str)
 		
-		if score >= args.minimum_score:
+		if score >= args.minimum_score and keyword != "":
 			if pageID not in index_dict:
 				index_dict[pageID] = {}
 			if lineID not in index_dict[pageID]:
@@ -110,14 +110,15 @@ for line in gt_file:
 	bb = BB(xmin, ymin, xmax, ymax, 1.0)
 	
 	for keyword in keywords:
-		if pageID in pageIDs:
-			if pageID not in bbxs_dict_gt:
-				bbxs_dict_gt[pageID] = {}
-			if keyword not in bbxs_dict_gt[pageID]:
-				bbxs_dict_gt[pageID][keyword] = ([], []) # List of BBxs, and a list of boolean to kwow if the keyword has been detected
-			
-			bbxs_dict_gt[pageID][keyword][0].append(bb)
-			bbxs_dict_gt[pageID][keyword][1].append(False)
+		if keyword != "":
+			if pageID in pageIDs:
+				if pageID not in bbxs_dict_gt:
+					bbxs_dict_gt[pageID] = {}
+				if keyword not in bbxs_dict_gt[pageID]:
+					bbxs_dict_gt[pageID][keyword] = ([], []) # List of BBxs, and a list of boolean to kwow if the keyword has been detected
+				
+				bbxs_dict_gt[pageID][keyword][0].append(bb)
+				bbxs_dict_gt[pageID][keyword][1].append(False)
 
 gt_file.close()
 

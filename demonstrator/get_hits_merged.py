@@ -86,13 +86,14 @@ for line in gt_file:
 	bb = BB(xmin, ymin, xmax, ymax, 1.0)
 	
 	for keyword in keywords:
-		if pageID not in bbxs_dict_gt:
-			bbxs_dict_gt[pageID] = {}
-		if keyword not in bbxs_dict_gt[pageID]:
-			bbxs_dict_gt[pageID][keyword] = ([], []) # List of BBxs, and a list of boolean to kwow if the keyword has been detected
-		
-		bbxs_dict_gt[pageID][keyword][0].append(bb)
-		bbxs_dict_gt[pageID][keyword][1].append(False)
+		if keyword != "":
+			if pageID not in bbxs_dict_gt:
+				bbxs_dict_gt[pageID] = {}
+			if keyword not in bbxs_dict_gt[pageID]:
+				bbxs_dict_gt[pageID][keyword] = ([], []) # List of BBxs, and a list of boolean to kwow if the keyword has been detected
+			
+			bbxs_dict_gt[pageID][keyword][0].append(bb)
+			bbxs_dict_gt[pageID][keyword][1].append(False)
 
 gt_file.close()
 
@@ -112,7 +113,7 @@ with open(args.index_path, 'r') as index_file:
 		xmax = int(xmax_str)
 		ymax = int(ymax_str)
 		
-		if score >= args.minimum_score:
+		if score >= args.minimum_score and keyword != "":
 			bb = BB(xmin, ymin, xmax, ymax, score)
 			
 			hit = 0

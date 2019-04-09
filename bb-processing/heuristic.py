@@ -238,8 +238,8 @@ for pageID in bbxs_dict:
 			pbosu = 1.0
 			if args.overlap_score_union:
 				overlapscore = total_overlap_score_union(bb, bb_list) - bb.get_score()
-				# ~ pbosu = sigmoid(overlapscore, 42, 18)
-				pbosu = pbosu if overlapscore > 0.23725 else 0.0
+				pbosu = sigmoid(overlapscore, 42, 18)
+				# ~ pbosu = pbosu if overlapscore > 0.23725 else 0.0
 			
 			pbgs = 1.0
 			if args.gaussian_shape:

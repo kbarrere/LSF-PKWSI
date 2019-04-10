@@ -7,7 +7,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Take the GT and write it inside custom lines')
 	parser.add_argument('custom_page', help='path to page xml file associated with the custom line extraction')
 	parser.add_argument('gt_page', help='path to page xml file associated with the ground truth')
-	parser.add_argument('output_path', help='path where to save the resulting page')
+	parser.add_argument('output_page', help='path where to save the resulting page')
+	parser.add_argument('--creator', default='David Goodenough', help='name of the creator that will be written inside the resulting xml')
 
 	args = parser.parse_args()
 
@@ -93,7 +94,10 @@ for textline_element in textline_elements:
 	
 	# Store the bbxs and the text
 	gt_list.append((bb, text))
-	
+
+# Open output XML
+page_data = pageData(args.output_page, creator=args.creator)
+
 # Open Custom Page XML
 custom_page = pageData(args.custom_page)
 custom_page.parse()

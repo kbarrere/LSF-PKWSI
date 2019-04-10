@@ -8,7 +8,7 @@ if __name__ == '__main__':
 	parser.add_argument('custom_page', help='path to page xml file associated with the custom line extraction')
 	parser.add_argument('gt_page', help='path to page xml file associated with the ground truth')
 	parser.add_argument('output_page', help='path where to save the resulting page')
-	parser.add_argument('--creator', default='David Goodenough', help='name of the creator that will be written inside the resulting xml')
+	parser.add_argument('--creator', default='PRHLT', help='name of the creator that will be written inside the resulting xml')
 
 	args = parser.parse_args()
 

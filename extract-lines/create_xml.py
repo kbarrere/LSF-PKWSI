@@ -12,7 +12,7 @@ if __name__ == '__main__':
 	parser.add_argument('output_xml_dir', help='path to the directory where to save the resultings xml')
 	parser.add_argument('--window_height_multiplier', type=float, default=1.25, help='this scalar multiplied by the average line height give the height of an extracted line')
 	parser.add_argument('--window_shift_multiplier', type=float, default=0.33, help='this scalar multiplied by the average line height give the shifht between each extracted line')
-	parser.add_argument('--creator', default='David Goodenough', help='name of the creator that will be written inside the resulting xml')
+	parser.add_argument('--creator', default='PRHLT', help='name of the creator that will be written inside the resulting xml')
 	parser.add_argument('--output_dir', help='path to the directory where to save the lines')
 	parser.add_argument('--show_input', action='store_true', help='show the input image')
 	parser.add_argument('--show_projection', action='store_true', help='show the projection of the gray')

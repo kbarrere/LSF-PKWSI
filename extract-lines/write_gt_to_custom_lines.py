@@ -63,16 +63,27 @@ def overlap_percent(bb1, bb2):
 	return percentage
 
 
-# Open Page XML
+# Open GT Page XML
 gt_page = pageData(args.gt_page)
 gt_page.parse()
 textline_elements = gt_page.get_region('TextLine')
 
-gt_list = [] # List of (bbx, associeted text)
+gt_list = [] # List of (bbx, associated text)
 for textline_element in textline_elements:
 	line_coords = gt_page.get_coords(textline_element)
-	line_xmin, line_ymin = line_coords[0]
-	line_xmax, line_ymax = line_coords[2]
+	line_xmin = line_coords[0][0]
+	line_ymin = line_coords[0][1]
+	line_xmax = line_coords[0][0]
+	line_ymax = line_coords[0][1]
+	
+	for i in range(1, len(line_coords)):
+		x, y = line_coords[i]
+		
+		line_xmin = min(line_xmin, x)
+		line_ymin = min(line_ymin, y)
+		line_xmax = max(line_xmax, x)
+		line_ymax = max(line_xmax, y)
+	
 	# ~ line_width = line_xmax - line_xmin
 	# ~ line_height = line_ymax - line_ymin
 	
@@ -82,3 +93,26 @@ for textline_element in textline_elements:
 	
 	# Store the bbxs and the text
 	gt_list.append((bb, text))
+	
+# Open Custom Page XML
+custom_page = pageData(args.custom_page)
+custom_page.parse()
+textline_elements = custom_page.get_region('TextLine')
+
+for textline_element in textline_elements:
+	line_coords = gt_page.get_coords(textline_element)
+	line_xmin, line_ymin = line_coords[0]
+	line_xmax, line_ymax = line_coords[2]
+	
+	bb = BB(line_xmin, line_ymin, line_xmax, line_ymax, 1)
+	
+	print("----------------------------------------------")
+	print(bb)
+	
+	for i in range(len(gt_list)):
+		bbgt = gt_list[i][0]
+		if is_intersection_bb(bb, bbgt):
+			overlap = overlap_percent(bbgt, bb)
+			if overlap > 0.5:
+				print(overlap)
+				print(bbgt)

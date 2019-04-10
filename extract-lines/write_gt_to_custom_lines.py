@@ -145,10 +145,18 @@ for custom_text_region in custom_text_regions:
 			
 			output_textline_region = output_page.add_element("TextLine", textlineID, "TextLine", convert_to_coords(line_xmin, line_ymin, line_xmax, line_ymax), parent=output_text_region)
 			
+			text = ""
+			
 			for i in range(len(gt_list)):
 				bbgt = gt_list[i][0]
 				if is_intersection_bb(bb, bbgt):
 					overlap = overlap_percent(bbgt, bb)
-					# ~ if overlap > 0.5:
+					if overlap > 0.5:
+						gt_text = gt_list[i][1]
+						if len(text) > 0:
+							text += ' ' + '<SPACE>' + ' '
+						text += gt_text
+			
+			output_page.add_text(text, output_textline_region)
 
 output_page.save_xml()

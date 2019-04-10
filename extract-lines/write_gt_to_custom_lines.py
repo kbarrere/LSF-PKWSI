@@ -68,17 +68,12 @@ gt_page = pageData(args.gt_page)
 gt_page.parse()
 textline_elements = gt_page.get_region('TextLine')
 
-gt_list = [] # List of (bbx, associeted text)
 for textline_element in textline_elements:
 	line_coords = gt_page.get_coords(textline_element)
 	line_xmin, line_ymin = line_coords[0]
 	line_xmax, line_ymax = line_coords[2]
-	# ~ line_width = line_xmax - line_xmin
-	# ~ line_height = line_ymax - line_ymin
-	
-	bb = BB(line_xmin, line_ymin, line_xmax, line_ymax, 1)
+	line_width = line_xmax - line_xmin
+	line_height = line_ymax - line_ymin
 	
 	text = gt_page.get_text(textline_element)
-	
-	# Store the bbxs and the text
-	gt_list.append((bb, text))
+	print(text)

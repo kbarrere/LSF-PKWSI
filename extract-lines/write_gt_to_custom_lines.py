@@ -124,7 +124,7 @@ output_page.new_page(img_name, str(height), str(width))
 custom_text_regions = custom_page.get_region('TextRegion')
 
 for custom_text_region in custom_text_regions:
-	regionID = custom_page.get_id(custom_text_region)
+	regionID = custom_page.get_id(custom_text_region)[11:]
 	regionCoords = custom_page.get_coords(custom_text_region)
 	
 	# Write the text region
@@ -134,24 +134,21 @@ for custom_text_region in custom_text_regions:
 	custom_textline_regions = custom_page.get_region('TextLine')
 	
 	for custom_textline_region in custom_textline_regions:
-		textlineID = custom_page.get_id(custom_text_region)
-		line_coords = gt_page.get_coords(custom_textline_region)
+		textlineID = custom_page.get_id(custom_textline_region)[9:]
 		
-		print(textlineID)
-		
-		line_xmin, line_ymin, line_xmax, line_ymax = get_max_coord(line_coords)
-		
-		bb = BB(line_xmin, line_ymin, line_xmax, line_ymax, 1)
-		
-		# ~ print("----------------------------------------------")
-		# ~ print(bb)
-		
-		for i in range(len(gt_list)):
-			bbgt = gt_list[i][0]
-			if is_intersection_bb(bb, bbgt):
-				overlap = overlap_percent(bbgt, bb)
-				# ~ if overlap > 0.5:
-					# ~ print(overlap)
-					# ~ print(bbgt)
+		if textlineID[:len(regionID)] == regionID:
+			line_coords = gt_page.get_coords(custom_textline_region)
+			line_xmin, line_ymin, line_xmax, line_ymax = get_max_coord(line_coords)
+			
+			bb = BB(line_xmin, line_ymin, line_xmax, line_ymax, 1)
+			
+			
+			output_textline_region = output_page.add_element("TextLine", textlineID, "TextLine", convert_to_coords(line_xmin, line_ymin, line_xmax, line_ymax), parent=output_text_region)
+			
+			for i in range(len(gt_list)):
+				bbgt = gt_list[i][0]
+				if is_intersection_bb(bb, bbgt):
+					overlap = overlap_percent(bbgt, bb)
+					# ~ if overlap > 0.5:
 
 output_page.save_xml()

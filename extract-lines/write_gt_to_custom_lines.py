@@ -63,6 +63,27 @@ def overlap_percent(bb1, bb2):
 	
 	return percentage
 
+def get_max_coord(coord_list):
+	line_xmin = coord_list[0][0]
+	line_ymin = coord_list[0][1]
+	line_xmax = coord_list[0][0]
+	line_ymax = coord_list[0][1]
+	
+	for i in range(1, len(coord_list)):
+		x, y = coord_list[i]
+		
+		line_xmin = min(line_xmin, x)
+		line_ymin = min(line_ymin, y)
+		line_xmax = max(line_xmax, x)
+		line_ymax = max(line_xmax, y)
+	
+	return line_xmin, line_ymin, line_xmax, line_ymax
+	
+
+def convert_to_coords(x1, y1, x2, y2):
+	return str(x1)+","+str(y1) + " " + str(x1)+","+str(y2)+ " " + str(x2)+","+str(y2)+ " " + str(x2)+","+str(y1)
+
+
 
 # Open GT Page XML
 gt_page = pageData(args.gt_page)
@@ -72,18 +93,7 @@ textline_elements = gt_page.get_region('TextLine')
 gt_list = [] # List of (bbx, associated text)
 for textline_element in textline_elements:
 	line_coords = gt_page.get_coords(textline_element)
-	line_xmin = line_coords[0][0]
-	line_ymin = line_coords[0][1]
-	line_xmax = line_coords[0][0]
-	line_ymax = line_coords[0][1]
-	
-	for i in range(1, len(line_coords)):
-		x, y = line_coords[i]
-		
-		line_xmin = min(line_xmin, x)
-		line_ymin = min(line_ymin, y)
-		line_xmax = max(line_xmax, x)
-		line_ymax = max(line_xmax, y)
+	line_xmin, line_ymin, line_xmax, line_ymax = get_max_coord(line_coords)
 	
 	# ~ line_width = line_xmax - line_xmin
 	# ~ line_height = line_ymax - line_ymin
@@ -95,13 +105,36 @@ for textline_element in textline_elements:
 	# Store the bbxs and the text
 	gt_list.append((bb, text))
 
-# Open output XML
-page_data = pageData(args.output_page, creator=args.creator)
+
 
 # Open Custom Page XML
 custom_page = pageData(args.custom_page)
 custom_page.parse()
 textline_elements = custom_page.get_region('TextLine')
+
+
+
+# Open output XML
+output_page = pageData(args.output_page, creator=args.creator)
+
+width, height = custom_page.get_size()
+img_name = custom_page.get_name()
+
+output_page.new_page(img_name, str(height), str(width))
+
+custom_text_regions = custom_page.get_region('TextRegion')
+
+for custom_text_region in custom_text_regions:
+	regionID = custom_page.get_id(custom_text_region)
+	regionCoords = custom_page.get_coords(custom_text_region)
+	
+	# Write the text region
+	xmin, ymin, xmax, ymax = get_max_coord(regionCoords)
+	output_text_region = output_page.add_element("TextRegion", regionID, "TextRegion", convert_to_coords(xmin, ymin, xmax, ymax))
+	
+	
+	
+	
 
 for textline_element in textline_elements:
 	line_coords = gt_page.get_coords(textline_element)
@@ -110,13 +143,15 @@ for textline_element in textline_elements:
 	
 	bb = BB(line_xmin, line_ymin, line_xmax, line_ymax, 1)
 	
-	print("----------------------------------------------")
-	print(bb)
+	# ~ print("----------------------------------------------")
+	# ~ print(bb)
 	
 	for i in range(len(gt_list)):
 		bbgt = gt_list[i][0]
 		if is_intersection_bb(bb, bbgt):
 			overlap = overlap_percent(bbgt, bb)
-			if overlap > 0.5:
-				print(overlap)
-				print(bbgt)
+			# ~ if overlap > 0.5:
+				# ~ print(overlap)
+				# ~ print(bbgt)
+
+output_page.save_xml()

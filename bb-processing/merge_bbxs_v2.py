@@ -272,6 +272,8 @@ for pageID in bbxs_dict:
 			for bbxs_grp in bbxs_grps:
 				# TODO: add all infos about the bbxs ?
 				# TODO: add info about all posible bbxs, custom line crossing the bx, ...
+				# TODO: frame number for each line
+				# TODO: Change the final score base on all possibles bbxs
 				new_bb = merge_bb_group(bbxs_grp)
 				merged_bb_list.append(new_bb)
 

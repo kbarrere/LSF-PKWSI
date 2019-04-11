@@ -75,7 +75,7 @@ def get_max_coord(coord_list):
 		line_xmin = min(line_xmin, x)
 		line_ymin = min(line_ymin, y)
 		line_xmax = max(line_xmax, x)
-		line_ymax = max(line_xmax, y)
+		line_ymax = max(line_ymax, y)
 	
 	return line_xmin, line_ymin, line_xmax, line_ymax
 	

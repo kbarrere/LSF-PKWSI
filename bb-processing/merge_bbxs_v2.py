@@ -140,7 +140,8 @@ def merged_bb_score(bb_list, line_dict, keyword):
 	score = 0
 	
 	for regionID in line_dict:
-		for line in line_dict[regionID]:
+		for lineID in line_dict[regionID]:
+			line = line_dict[regionID][lineID]
 			xmin_line = line[0]
 			ymin_line = line[1]
 			xmax_line = line[2]
@@ -169,11 +170,11 @@ def merged_bb_score(bb_list, line_dict, keyword):
 								# If this BB exist add it to the score
 								for bb in bb_list:
 									if bb_equal(bb, bb_tmp):
-										print('TEST')
 										score_bb = bb.get_score()
 										score += contrib_score * score_bb
-			
+	
 	new_score = score / total_score
+	print(new_score)
 	B.set_score(new_score)
 	
 	return B
@@ -293,6 +294,7 @@ output = open(args.output_index, 'w')
 
 for pageID in bbxs_dict:
 	for keyword in bbxs_dict[pageID]:
+		print(keyword)
 		bb_list = bbxs_dict[pageID][keyword]
 		
 		previous_len = 0
@@ -381,10 +383,6 @@ for pageID in bbxs_dict:
 			merged_bb_list = []
 			
 			for bbxs_grp in bbxs_grps:
-				# TODO: add all infos about the bbxs ?
-				# TODO: add info about all posible bbxs, custom line crossing the bx, ...
-				# TODO: frame number for each line
-				# TODO: Change the final score base on all possibles bbxs
 				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
 				merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
 				

@@ -1,4 +1,4 @@
-for customxml in ls output/*.xml;
+for customxml in $(ls output/*.xml);
 	do xml=$(echo $customxml | sed 's/output\///');
 	echo $xml;
 	gtxml=$(ls Train/*.xml | grep $xml);

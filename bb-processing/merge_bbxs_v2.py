@@ -22,13 +22,15 @@ class BB:
 		self.xmax = xmax
 		self.ymax = ymax
 		self.score = score
-		self.score = score
 	
 	def get_coords(self):
 		return self.xmin, self.ymin, self.xmax, self.ymax
 	
 	def get_score(self):
 		return self.score
+	
+	def set_score(self, score):
+		self.score = score
 	
 	def __repr__(self):
 		return "BB("+self.__str__()+")"
@@ -37,6 +39,12 @@ class BB:
 		return "xmin="+str(self.xmin)+" ymin="+str(self.ymin)+" xmax="+str(self.xmax)+" ymax="+str(self.ymax)+" score="+str(self.score)
 
 def bb_equal(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	return (xmin1 == xmin2 and ymin1 == ymin2 and xmax1 == xmax2 and ymax1 == ymax2)
+
+def bb_equal_strict(bb1, bb2):
 	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
 	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
 	score1 = bb1.get_score()
@@ -112,8 +120,69 @@ def merge_bb_group(bb_list):
 	
 	return bb
 
+def gaussian(x, mean, std):
+	return np.exp(- ((x - mean) ** 2) / (2 * std ** 2))
+
+def contribution_score(b, frame_number, B, keyword, mean=3.128, std=1.373):
+	if is_intersection_bb(b, B):
+		frame_per_character = float(frame_number) / float(len(keyword))
+		return overlap_percent(b, B) * overlap_percent(B, b) * gaussian(frame_per_character, mean, std)
+	return 0
+
+def merged_bb_score(bb_list, line_dict, keyword):
+	B = merge_bb_group(bb_list)
+	xmin_B, ymin_B, xmax_B, ymax_B = B.get_coords()
+	width_B = xmax_B - xmin_B
+	x_start_min = xmin_B - width_B
+	x_end_max = xmax_B + width_B
+	
+	total_score = 0
+	score = 0
+	
+	for regionID in line_dict:
+		for line in line_dict[regionID]:
+			xmin_line = line[0]
+			ymin_line = line[1]
+			xmax_line = line[2]
+			ymax_line = line[3]
+			total_frame = line[4]
+			
+			line_width = xmax_line - xmin_line + 1
+		
+			# Only keep the lines that cross the BB B
+			if is_intersection_segment(ymin_B, ymax_B, ymin_line, ymax_line):
+				
+				for start_frame in range(total_frame):
+					x_start = int(float(start_frame)/float(total_frame)*line_width)
+					
+					if x_start_min <= x_start and x_start <= x_end_max:
+						for end_frame in range(start_frame + 1, total_frame):
+							x_end = int(float(end_frame)/float(total_frame)*line_width)
+							
+							if x_end <= x_end_max:
+								bb_tmp = BB(x_start, ymin_line, x_end, ymax_line, 0)
+								
+								contrib_score = contribution_score(bb_tmp, end_frame - start_frame + 1, B, keyword)
+								
+								total_score += contrib_score
+								
+								# If this BB exist add it to the score
+								for bb in bb_list:
+									if bb_equal(bb, bb_tmp):
+										print('TEST')
+										score_bb = bb.get_score()
+										score += contrib_score * score_bb
+			
+	new_score = score / total_score
+	B.set_score(new_score)
+	
+	return B
+			
+		
+		
 
 
+line_dict = {} # Stocks line and their position info, their number of frames, ...
 
 # Reading the index file
 index_file = open(args.index_path, 'r')
@@ -132,6 +201,17 @@ for line in index_file:
 	if lineID not in index_dict[pageID]:
 		index_dict[pageID][lineID] = []
 	index_dict[pageID][lineID].append([keyword, score, start_frame, end_frame, total_frame])
+	
+	# Complete line dict
+	regionID = lineID.split('-')[0].split('_')[-1]
+	if pageID not in line_dict:
+		line_dict[pageID] = {}
+	if regionID not in line_dict[pageID]:
+		line_dict[pageID][regionID] = {}
+	if lineID not in line_dict[pageID][regionID]:
+		line_dict[pageID][regionID][lineID] = [-1, -1, -1, -1, -1] # xmin, ymin, xmax, ymax, number of frames
+	if line_dict[pageID][regionID][lineID][4] == -1:
+		line_dict[pageID][regionID][lineID][4] = total_frame
 	
 index_file.close()
 
@@ -154,8 +234,22 @@ for page_path in args.pages_path:
 			line_coords = page.get_coords(textline_element)
 			line_xmin, line_ymin = line_coords[0]
 			line_xmax, line_ymax = line_coords[2]
-			line_width = line_xmax - line_xmin
+			line_width = line_xmax - line_xmin + 1
 			# ~ line_height = line_ymax - line_ymin
+			
+			# Complete line dict
+			regionID = lineID.split('-')[0].split('_')[-1]
+			if pageID not in line_dict:
+				line_dict[pageID] = {}
+			if regionID not in line_dict[pageID]:
+				line_dict[pageID][regionID] = {}
+			if lineID not in line_dict[pageID][regionID]:
+				line_dict[pageID][regionID][lineID] = [-1, -1, -1, -1, -1] # xmin, ymin, xmax, ymax, number of frames
+			if line_dict[pageID][regionID][lineID][0] == -1:
+				line_dict[pageID][regionID][lineID][0] = line_xmin
+				line_dict[pageID][regionID][lineID][1] = line_ymin
+				line_dict[pageID][regionID][lineID][2] = line_xmax
+				line_dict[pageID][regionID][lineID][3] = line_ymax
 			
 			if lineID in index_dict[pageID]:
 				for detected in index_dict[pageID][lineID]:
@@ -177,6 +271,23 @@ for page_path in args.pages_path:
 					
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
+
+# Complete the line with no informations on the number of frames with the mean
+for pageID in line_dict:
+	for regionID in line_dict[pageID]:
+		
+		# Get the average number of frames on the line
+		frame_count = 0
+		for lineID in line_dict[pageID][regionID]:
+			xmin, ymin, xmax, ymax, total_frame = line_dict[pageID][regionID][lineID]
+			frame_count += total_frame
+		mean_frame_count = frame_count / len(line_dict[pageID][regionID])
+		
+		# Use that number to complete the one without that information
+		for lineID in line_dict[pageID][regionID]:
+			xmin, ymin, xmax, ymax, total_frame = line_dict[pageID][regionID][lineID]
+			if total_frame == -1:
+				line_dict[pageID][regionID][lineID][4] = mean_frame_count
 
 output = open(args.output_index, 'w')
 
@@ -274,6 +385,9 @@ for pageID in bbxs_dict:
 				# TODO: add info about all posible bbxs, custom line crossing the bx, ...
 				# TODO: frame number for each line
 				# TODO: Change the final score base on all possibles bbxs
+				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
+				merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
+				
 				new_bb = merge_bb_group(bbxs_grp)
 				merged_bb_list.append(new_bb)
 

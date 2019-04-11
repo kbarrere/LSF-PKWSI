@@ -9,6 +9,7 @@ if __name__ == '__main__':
 	parser.add_argument('gt_page', help='path to page xml file associated with the ground truth')
 	parser.add_argument('output_page', help='path where to save the resulting page')
 	parser.add_argument('--creator', default='PRHLT', help='name of the creator that will be written inside the resulting xml')
+	parser.add_argument('--noise', default='<NOISE>', help='noise character')
 
 	args = parser.parse_args()
 
@@ -157,6 +158,8 @@ for custom_text_region in custom_text_regions:
 							text += ' ' + '<SPACE>' + ' '
 						text += gt_text
 			
+			if text == "":
+				text = args.noise
 			output_page.add_text(text, output_textline_region)
 
 output_page.save_xml()

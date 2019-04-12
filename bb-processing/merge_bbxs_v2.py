@@ -182,6 +182,63 @@ def merged_bb_score(bb_list, line_dict, keyword):
 	B.set_score(new_score)
 	
 	return B
+
+def merged_bb_score_fast(bb_list, line_dict, keyword):
+	B = merge_bb_group(bb_list)
+	xmin_B, ymin_B, xmax_B, ymax_B = B.get_coords()
+	width_B = xmax_B - xmin_B
+	x_start_min = xmin_B - width_B
+	x_end_max = xmax_B + width_B
+	
+	total_score = 0
+	score = 0
+	
+	# debug purpose
+	nbr_lines = 0
+	nbr_frames = 0
+	
+	for regionID in line_dict:
+		for lineID in line_dict[regionID]:
+			
+			line = line_dict[regionID][lineID]
+			xmin_line = line[0]
+			ymin_line = line[1]
+			xmax_line = line[2]
+			ymax_line = line[3]
+			total_frame = line[4]
+			
+			line_width = xmax_line - xmin_line + 1
+		
+			# Only keep the lines that cross the BB B
+			if is_intersection_segment(ymin_B, ymax_B, ymin_line, ymax_line):
+				
+				bb_line = BB(xmin_line, ymin_line, xmax_line, ymax_line, 0)
+				ovlBl = overlap_percent(B, bb_line)
+				
+				gaussian_score = 0
+				frames = x_end_max - x_start_min
+				for k in range(frames):
+					gaussian_score += (frames-k) * gaussian(k+1, 3.128, 1.373)
+			
+				total_score += ovlBl * gaussian_score
+					
+				
+				
+	
+	new_score = bb_list[0].get_score()
+	if total_score > 0:
+		new_score = score / total_score
+	else:
+		print("Warning: Total Score = 0")
+	print("Keyword: " + keyword)
+	print("Number of lines: " + str(nbr_lines))
+	print("Number of frames: " + str(nbr_frames))
+	print("Total Score: " + str(total_score))
+	print("Score: " + str(score))
+	print("New Score: " + str(new_score))
+	B.set_score(new_score)
+	
+	return B
 			
 		
 		
@@ -298,7 +355,6 @@ output = open(args.output_index, 'w')
 
 for pageID in bbxs_dict:
 	for keyword in bbxs_dict[pageID]:
-		print(keyword)
 		bb_list = bbxs_dict[pageID][keyword]
 		
 		previous_len = 0
@@ -388,7 +444,8 @@ for pageID in bbxs_dict:
 			
 			for bbxs_grp in bbxs_grps:
 				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
-				merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
+				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
+				merged_bb_score_fast(bbxs_grp, line_dict[pageID], keyword)
 				
 				new_bb = merge_bb_group(bbxs_grp)
 				merged_bb_list.append(new_bb)

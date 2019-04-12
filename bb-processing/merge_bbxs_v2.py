@@ -173,7 +173,11 @@ def merged_bb_score(bb_list, line_dict, keyword):
 										score_bb = bb.get_score()
 										score += contrib_score * score_bb
 	
-	new_score = score / total_score
+	new_score = bb_list[0].get_score()
+	if total_score > 0:
+		new_score = score / total_score
+	else:
+		print("Warning: Total Score = 0")
 	print(new_score)
 	B.set_score(new_score)
 	

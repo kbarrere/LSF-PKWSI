@@ -376,8 +376,7 @@ output = open(args.output_index, 'w')
 for pageID in bbxs_dict:
 	c = 0
 	cm = len(bbxs_dict[pageID])
-	# ~ for keyword in bbxs_dict[pageID]:
-	for keyword in ["ANNA"]:
+	for keyword in bbxs_dict[pageID]:
 		c += 1
 		print(str(c) + "/" + str(cm))
 		bb_list = bbxs_dict[pageID][keyword]

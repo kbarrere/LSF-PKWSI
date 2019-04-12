@@ -201,16 +201,15 @@ def merged_bb_score_fast(bb_list, line_dict, keyword):
 		for lineID in line_dict[regionID]:
 			
 			line = line_dict[regionID][lineID]
-			xmin_line = line[0]
 			ymin_line = line[1]
-			xmax_line = line[2]
 			ymax_line = line[3]
-			total_frame = line[4]
-			
-			line_width = xmax_line - xmin_line + 1
 		
 			# Only keep the lines that cross the BB B
 			if is_intersection_segment(ymin_B, ymax_B, ymin_line, ymax_line):
+				
+				# Compute an approximation of the total score
+				xmin_line = line[0]
+				xmax_line = line[2]
 				
 				bb_line = BB(xmin_line, ymin_line, xmax_line, ymax_line, 0)
 				ovlBl = overlap_percent(B, bb_line)
@@ -222,20 +221,21 @@ def merged_bb_score_fast(bb_list, line_dict, keyword):
 			
 				total_score += ovlBl * gaussian_score
 					
-				
-				
+				# Compute the score of the BBxs.
+				for bb in bb_list:
+					xmin, ymin, xmax, ymax = bb.get_coords()
+					
+					# Test if the bb belong to that line
+					if ymin == ymin_line and ymax == ymax_line:
+						total_frame = line[4]
+						line_width = xmax_line - xmin_line + 1
+						
+						frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
+						score += contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
 	
 	new_score = bb_list[0].get_score()
 	if total_score > 0:
 		new_score = score / total_score
-	else:
-		print("Warning: Total Score = 0")
-	print("Keyword: " + keyword)
-	print("Number of lines: " + str(nbr_lines))
-	print("Number of frames: " + str(nbr_frames))
-	print("Total Score: " + str(total_score))
-	print("Score: " + str(score))
-	print("New Score: " + str(new_score))
 	B.set_score(new_score)
 	
 	return B

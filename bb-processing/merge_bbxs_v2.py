@@ -13,6 +13,7 @@ if __name__ == '__main__':
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	parser.add_argument('--verbose', action='store_true', help='print the current page, keyword and step')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
+	parser.add_argument('--normalize', type=bool, default=True, help='wheter to normalize (Default) or not')
 	
 	
 	args = parser.parse_args()
@@ -496,6 +497,16 @@ for pageID in bbxs_dict:
 			bb_list = merged_bb_list
 			original_bb_list = bbxs_grps
 		
+		# Normalize the results
+		if args.normalize:
+			max_score = 0.0
+			for bb in bb_list:
+				max_score = max(max_score, bb.get_score())
+			
+			for bb in bb_list:
+				bb.set_score(bb.get_score() / max_score)
+		
+		# Write results
 		for bb in bb_list:
 			# pageID keyword score xmin ymin xmax ymax
 			xmin, ymin, xmax, ymax = bb.get_coords()

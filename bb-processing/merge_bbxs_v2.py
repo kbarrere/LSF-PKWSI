@@ -12,6 +12,8 @@ if __name__ == '__main__':
 	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	parser.add_argument('--verbose', action='store_true', help='print the current page, keyword and step')
+	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
+	
 	
 	args = parser.parse_args()
 
@@ -254,26 +256,28 @@ for line in index_file:
 	lineID, keyword, score_str, start_frame_str, end_frame_str, total_frame_str = line.split(' ')
 	pageID, lineID = lineID.split('.')
 	score = float(score_str)
-	start_frame = int(start_frame_str)
-	end_frame = int(end_frame_str)
-	total_frame = int(total_frame_str)
 	
-	if pageID not in index_dict:
-		index_dict[pageID] = {}
-	if lineID not in index_dict[pageID]:
-		index_dict[pageID][lineID] = []
-	index_dict[pageID][lineID].append([keyword, score, start_frame, end_frame, total_frame])
-	
-	# Complete line dict
-	regionID = lineID.split('-')[0].split('_')[-1]
-	if pageID not in line_dict:
-		line_dict[pageID] = {}
-	if regionID not in line_dict[pageID]:
-		line_dict[pageID][regionID] = {}
-	if lineID not in line_dict[pageID][regionID]:
-		line_dict[pageID][regionID][lineID] = [-1, -1, -1, -1, -1] # xmin, ymin, xmax, ymax, number of frames
-	if line_dict[pageID][regionID][lineID][4] == -1:
-		line_dict[pageID][regionID][lineID][4] = total_frame
+	if score > args.minimum_score:
+		start_frame = int(start_frame_str)
+		end_frame = int(end_frame_str)
+		total_frame = int(total_frame_str)
+		
+		if pageID not in index_dict:
+			index_dict[pageID] = {}
+		if lineID not in index_dict[pageID]:
+			index_dict[pageID][lineID] = []
+		index_dict[pageID][lineID].append([keyword, score, start_frame, end_frame, total_frame])
+		
+		# Complete line dict
+		regionID = lineID.split('-')[0].split('_')[-1]
+		if pageID not in line_dict:
+			line_dict[pageID] = {}
+		if regionID not in line_dict[pageID]:
+			line_dict[pageID][regionID] = {}
+		if lineID not in line_dict[pageID][regionID]:
+			line_dict[pageID][regionID][lineID] = [-1, -1, -1, -1, -1] # xmin, ymin, xmax, ymax, number of frames
+		if line_dict[pageID][regionID][lineID][4] == -1:
+			line_dict[pageID][regionID][lineID][4] = total_frame
 	
 index_file.close()
 
@@ -354,7 +358,12 @@ for pageID in line_dict:
 output = open(args.output_index, 'w')
 
 for pageID in bbxs_dict:
-	for keyword in bbxs_dict[pageID]:
+	c = 0
+	cm = len(bbxs_dict[pageID])
+	# ~ for keyword in bbxs_dict[pageID]:
+	for keyword in ["ANNA"]:
+		c += 1
+		print(str(c) + "/" + str(cm))
 		bb_list = bbxs_dict[pageID][keyword]
 		
 		previous_len = 0
@@ -445,9 +454,10 @@ for pageID in bbxs_dict:
 			for bbxs_grp in bbxs_grps:
 				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
 				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
-				merged_bb_score_fast(bbxs_grp, line_dict[pageID], keyword)
 				
-				new_bb = merge_bb_group(bbxs_grp)
+				
+				# ~ new_bb = merge_bb_group(bbxs_grp)
+				new_bb = merged_bb_score_fast(bbxs_grp, line_dict[pageID], keyword)
 				merged_bb_list.append(new_bb)
 
 			bb_list = merged_bb_list

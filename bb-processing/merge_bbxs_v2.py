@@ -241,10 +241,25 @@ def merged_bb_score_fast(bb_list, line_dict, keyword):
 	B.set_score(new_score)
 	
 	return B
-			
-		
-		
 
+def merge_lists(list1, list2):
+	output_list = []
+	
+	for el1 in list1:
+		output_list.append(el1)
+		
+	for el2 in list2:
+		if el2 not in output_list:
+			output_list.appen(el2)
+	
+	return output_list
+
+def append_lists(list1, list2):
+	for el2 in list2:
+		if el2 not in list1:
+			list1.append(el2)
+	
+	
 
 line_dict = {} # Stocks line and their position info, their number of frames, ...
 
@@ -366,6 +381,11 @@ for pageID in bbxs_dict:
 		print(str(c) + "/" + str(cm))
 		bb_list = bbxs_dict[pageID][keyword]
 		
+		# Construct original bbxs lists
+		original_bb_list = []
+		for bb in bb_list:
+			original_bb_list.append([bb])
+		
 		previous_len = 0
 		i = 0
 		
@@ -377,19 +397,27 @@ for pageID in bbxs_dict:
 				print(pageID + " - " + keyword + " - Step " + str(i))
 			
 			bbxs_grps = []
+			original_bbxs_grps = []
 			
-			for bb1 in bb_list:
+			# ~ for bb1 in bb_list:
+			for i1 in range(len(bb_list)):
+				bb1 = bb_list(i1)
 				
 				# Search for a bb that has an intersection with current bb
 				is_bb_alone = True
-				for bb2 in bb_list:
+				# ~ for bb2 in bb_list:
+				for i2 in range(len(bb_list)):
+					bb2 = bb_list(i2)
 					overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
 					if is_intersection_bb(bb1, bb2) and overlap > args.min_overlap and not bb_equal(bb1, bb2):
 						is_bb_alone = False
 						
 						# Try to insert that couple of bounding box in every existing group of bounding box
 						is_couple_new = True
-						for bbxs_grp in bbxs_grps:
+						# ~ for bbxs_grp in bbxs_grps:
+						for ibbxs_grp in range(len(bbxs_grp)):
+							bbxs_grp = bbxs_grp[ibbxs_grp]
+							original_bbxs_grp = original_bbxs_grps[ibbxs_grp]
 							is_bbs_match = True
 							
 							curr_grp_to_test = []
@@ -438,20 +466,25 @@ for pageID in bbxs_dict:
 								is_couple_new = False
 								if bb1 not in bbxs_grp:
 									bbxs_grp.append(bb1)
+									append_lists(original_bbxs_grp, original_bb_list[i1])
 								if bb2 not in bbxs_grp:
 									bbxs_grp.append(bb2)
+									append_lists(original_bbxs_grp, original_bb_list[i2])
+									
 						
 						# Create a new group is the couple match nowhere
 						if is_couple_new:
 							bbxs_grps.append([bb1, bb2])
+							original_bbxs_grps.append([merge_lists(original_bb_list[i1], original_bb_list[i2])])
 					
 				if is_bb_alone:
 					bbxs_grps.append([bb1])
+					original_bbxs_grps.append([original_bb_list[i1]])
 			
 			# Merge the bounding boxes of one group into one big one
 			merged_bb_list = []
 			
-			for bbxs_grp in bbxs_grps:
+			for bbxs_grp in original_bbxs_grps:
 				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
 				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
 				
@@ -461,6 +494,7 @@ for pageID in bbxs_dict:
 				merged_bb_list.append(new_bb)
 
 			bb_list = merged_bb_list
+			original_bb_list = bbxs_grps
 		
 		for bb in bb_list:
 			# pageID keyword score xmin ymin xmax ymax

@@ -236,7 +236,7 @@ def merged_bb_score_fast(bb_list, line_dict, keyword):
 						line_width = xmax_line - xmin_line + 1
 						
 						frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
-						score += contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
+						score += contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373) * bb.get_score()
 	
 	new_score = bb_list[0].get_score()
 	if total_score > 0:
@@ -261,6 +261,48 @@ def append_lists(list1, list2):
 	for el2 in list2:
 		if el2 not in list1:
 			list1.append(el2)
+			
+def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
+	B = merge_bb_group(bb_list)
+	
+	scores = []
+	
+	for bb in bb_list:
+		xmin, ymin, xmax, ymax = bb.get_coords()
+				
+		for regionID in line_dict:
+			for lineID in line_dict[regionID]:
+				line = line_dict[regionID][lineID]
+				ymin_line = line[1]
+				ymax_line = line[3]
+				
+				# Test if the bb belong to that line
+				if ymin == ymin_line and ymax == ymax_line:
+					total_frame = line[4]
+					line_width = xmax_line - xmin_line + 1
+					
+					frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
+					score = contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
+					
+					scores.append(score)
+	
+	total_score = eps
+	for score in scores:
+		total_score += score
+	
+	new_score = 0
+	for i in range(len(bb_list)):
+		new_score += scores[i] * bb_list[i].get_score() / total_score
+	
+	B.set_score(new_score)
+	
+	return B
+	
+	
+	
+	
+	
+	
 	
 	
 
@@ -496,7 +538,7 @@ for pageID in bbxs_dict:
 					new_bb = merge_bb_group(bbxs_grp)
 				# Simple estimation of the missing probabilty by providing a constant value
 				elif args.eps > 0.0:
-					new_bb = merge_bb_group_missqty(bbxs_grp, args.eps)
+					new_bb = merge_bb_group_missqty(bbxs_grp, line_dict[pageID], keyword, args.eps)
 				# Complex method based on an heuristic to estimate the amount of noise missing
 				elif args.complex:
 					new_bb = merged_bb_score_fast(bbxs_grp, line_dict[pageID], keyword)

@@ -1,5 +1,6 @@
 import argparse
 from xmlPAGE import *
+import time
 
 if __name__ == '__main__':
 	
@@ -12,6 +13,8 @@ if __name__ == '__main__':
 	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	parser.add_argument('--verbose', action='store_true', help='print the current page, keyword and step')
+	parser.add_argument('--show-progress', action='store_true', help='print the current progress for each page')
+	parser.add_argument('--show-timings', action='store_true', help='print the time for each step')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
 	parser.add_argument('--normalize', default='false', help='whether to normalize or not')
 	parser.add_argument('--complex', action='store_true', help='Complex method to merge bounding boxes')
@@ -324,6 +327,9 @@ def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
 
 line_dict = {} # Stocks line and their position info, their number of frames, ...
 
+time_index = 0
+time_index_start = time.time()
+
 # Reading the index file
 index_file = open(args.index_path, 'r')
 index_dict = {}
@@ -357,6 +363,13 @@ for line in index_file:
 	
 index_file.close()
 
+time_index_end = time.time()
+time_index = time_index_end - time_index_start
+
+
+
+time_page = 0
+time_page_start = time.time()
 
 bbxs_dict = {}
 
@@ -414,6 +427,14 @@ for page_path in args.pages_path:
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
 
+time_page_end = time.time()
+time_page = time_page_end - time_page_start
+
+
+
+time_complete = 0
+time_complete_start = time.time()
+
 # Complete the line with no informations on the number of frames with the mean
 for pageID in line_dict:
 	for regionID in line_dict[pageID]:
@@ -433,12 +454,22 @@ for pageID in line_dict:
 
 output = open(args.output_index, 'w')
 
+time_complete_end = time.time()
+time_complete = time_complete_end - time_complete_start
+
+
+
+time_group = 0
+time_merge = 0
+time_write = 0
+
 for pageID in bbxs_dict:
 	c = 0
 	cm = len(bbxs_dict[pageID])
 	for keyword in bbxs_dict[pageID]:
 		c += 1
-		print(str(c) + "/" + str(cm))
+		if args.show_progress:
+			print(str(c) + "/" + str(cm))
 		bb_list = bbxs_dict[pageID][keyword]
 		
 		# Construct original bbxs lists
@@ -450,6 +481,9 @@ for pageID in bbxs_dict:
 		i = 0
 		
 		while (previous_len != len(bb_list)) and ( i < args.rec or args.rec == -1):
+			
+			time_group_start = time.time()
+			
 			i += 1
 			previous_len = len(bb_list)
 			
@@ -541,6 +575,13 @@ for pageID in bbxs_dict:
 					bbxs_grps.append([bb1])
 					original_bbxs_grps.append(original_bb_list[i1])
 			
+			time_group_end = time.time()
+			time_group += time_group_end - time_group_start
+			
+			
+			
+			time_merge_start = time.time()
+			
 			# Merge the bounding boxes of one group into one big one
 			merged_bb_list = []
 			
@@ -562,6 +603,9 @@ for pageID in bbxs_dict:
 
 			bb_list = merged_bb_list
 			original_bb_list = bbxs_grps
+			
+			time_merge_end = time.time()
+			time_merge += time_merge_end - time_merge_start
 		
 		# Normalize the results
 		if string_to_boolean(args.normalize):
@@ -572,6 +616,10 @@ for pageID in bbxs_dict:
 			for bb in bb_list:
 				bb.set_score(bb.get_score() / max_score)
 		
+		
+		
+		time_write_start = time.time()
+		
 		# Write results
 		for bb in bb_list:
 			# pageID keyword score xmin ymin xmax ymax
@@ -579,5 +627,16 @@ for pageID in bbxs_dict:
 			score = bb.get_score()
 			line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
 			output.write(line_to_write)
+		
+		time_write_end = time.time()
+		time_write += time_write_end - time_write_start
 
 output.close()
+
+if args.show_timings:
+	print("Time to read the index: " + str(time_index))
+	print("Time to read the pages: " + str(time_page))
+	print("Time to complete the pages: " + str(time_complete))
+	print("Time to group BBxs: " + str(time_group))
+	print("Time to merge: " + str(time_merge))
+	print("Time to write results: " + str(time_write))

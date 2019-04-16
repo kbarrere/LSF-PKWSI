@@ -1,4 +1,4 @@
-eps=10
+eps=0
 
 rm results/*
 

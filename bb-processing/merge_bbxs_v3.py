@@ -13,12 +13,21 @@ if __name__ == '__main__':
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	parser.add_argument('--verbose', action='store_true', help='print the current page, keyword and step')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
-	parser.add_argument('--normalize', type=bool, default=True, help='whether to normalize (Default) or not')
+	parser.add_argument('--normalize', default='false', help='whether to normalize or not')
 	parser.add_argument('--complex', action='store_true', help='Complex method to merge bounding boxes')
 	parser.add_argument('--eps', type=float, default =-1.0, help='Estimate the missing probability by this value')
 	
 	
 	args = parser.parse_args()
+
+def string_to_boolean(s):
+	if s.lower() in ('yes', 'y', 'true', 't', '1'):
+		return True
+	elif s.lower() in ('no', 'n', 'false', 'f', '0'):
+		return False
+	else:
+		raise argparse.ArgumentTypeError('Boolean value expected.')
+		
 
 class BB:
 	def __init__(self, xmin, ymin, xmax, ymax, score):
@@ -265,9 +274,13 @@ def append_lists(list1, list2):
 def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
 	B = merge_bb_group(bb_list)
 	
-	scores = []
+	n = len(bb_list)
 	
-	for bb in bb_list:
+	scores = [0]*n
+	
+	for i in range(n):
+	# ~ for bb in bb_list:
+		bb = bb_list[i]
 		xmin, ymin, xmax, ymax = bb.get_coords()
 				
 		for regionID in line_dict:
@@ -278,13 +291,16 @@ def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
 				
 				# Test if the bb belong to that line
 				if ymin == ymin_line and ymax == ymax_line:
+					xmin_line = line[0]
+					xmax_line = line[2]
 					total_frame = line[4]
 					line_width = xmax_line - xmin_line + 1
 					
 					frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
 					score = contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
 					
-					scores.append(score)
+					# ~ scores.append(score)
+					scores[i] = score
 	
 	total_score = eps
 	for score in scores:
@@ -548,7 +564,7 @@ for pageID in bbxs_dict:
 			original_bb_list = bbxs_grps
 		
 		# Normalize the results
-		if args.normalize:
+		if string_to_boolean(args.normalize):
 			max_score = 0.0
 			for bb in bb_list:
 				max_score = max(max_score, bb.get_score())

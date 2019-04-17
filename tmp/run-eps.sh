@@ -1,4 +1,4 @@
-eps=100
+eps=0.2
 
 rm results/*
 
@@ -8,7 +8,7 @@ for idx in $(ls idx/*.idx);
 	echo $page;
 	res=$(echo $idx | sed 's/idx/results/');
 	echo $res;
-	python ../bb-processing/merge_bbxs_v3.py --eps $eps $idx $page $res;
+	python ../bb-processing/merge_bbxs_v4.py --eps $eps $idx $page $res;
 done
 
 cat results/* > results.idx

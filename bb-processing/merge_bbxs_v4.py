@@ -1,6 +1,7 @@
 import argparse
 from xmlPAGE import *
 import time
+import math
 
 if __name__ == '__main__':
 	
@@ -19,6 +20,7 @@ if __name__ == '__main__':
 	parser.add_argument('--normalize', default='false', help='whether to normalize or not')
 	parser.add_argument('--complex', action='store_true', help='Complex method to merge bounding boxes')
 	parser.add_argument('--eps', type=float, default =-1.0, help='Estimate the missing probability by this value')
+	parser.add_argument('--total', type=float, default =-1.0, help='Estimate the missing probability by this value')
 	
 	
 	args = parser.parse_args()
@@ -120,7 +122,7 @@ def merge_bb_group(bb_list):
 		max_score = max(max_score, score)
 	
 	# Temporary solution to avoid division by 0
-	if total_mass == 0.0:
+	if total_mass < 0.000001:
 		return bb_list[0]
 	
 	center_x = total_x / total_mass
@@ -133,6 +135,18 @@ def merge_bb_group(bb_list):
 	ymin = center_y - center_h / 2
 	ymax = center_y + center_h / 2
 	
+	if math.isnan(xmin):
+		print("xmin:"+str(xmin))
+		print("ymin:"+str(ymin))
+		print("xmax:"+str(xmax))
+		print("ymax"+str(ymax))
+		print("total mass:"+str(total_mass))
+		print("total x:"+str(total_x))
+		print("total y:"+str(total_y))
+		print("center_x:"+str(center_x))
+		print("center_y:"+str(center_y))
+		print("center_w:"+str(center_w))
+		print("center_h:"+str(center_h))
 	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
 	
 	return bb
@@ -273,7 +287,9 @@ def append_lists(list1, list2):
 	for el2 in list2:
 		if el2 not in list1:
 			list1.append(el2)
-			
+
+max_total = 0.0
+		
 def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
 	B = merge_bb_group(bb_list)
 	
@@ -309,13 +325,54 @@ def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
 	for score in scores:
 		total_score += score
 	
-	new_score = 0
-	for i in range(len(bb_list)):
-		new_score += scores[i] * bb_list[i].get_score() / total_score
+	new_score = 0.0
+	if total_score > 0:
+		for i in range(len(bb_list)):
+			new_score += scores[i] * bb_list[i].get_score() / total_score
 	
 	B.set_score(new_score)
 	
-	return B
+	return B, total_score
+
+def merge_bb_group_total_qty(bb_list, line_dict, keyword, total):
+	B = merge_bb_group(bb_list)
+	
+	n = len(bb_list)
+	
+	scores = [0]*n
+	
+	for i in range(n):
+	# ~ for bb in bb_list:
+		bb = bb_list[i]
+		xmin, ymin, xmax, ymax = bb.get_coords()
+				
+		for regionID in line_dict:
+			for lineID in line_dict[regionID]:
+				line = line_dict[regionID][lineID]
+				ymin_line = line[1]
+				ymax_line = line[3]
+				
+				# Test if the bb belong to that line
+				if ymin == ymin_line and ymax == ymax_line:
+					xmin_line = line[0]
+					xmax_line = line[2]
+					total_frame = line[4]
+					line_width = xmax_line - xmin_line + 1
+					
+					frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
+					score = contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
+					
+					# ~ scores.append(score)
+					scores[i] = score
+	
+	new_score = 0
+	if total > 0:
+		for i in range(len(bb_list)):
+			new_score += scores[i] * bb_list[i].get_score() / total
+	
+	B.set_score(new_score)
+	
+	return B, total_score
 	
 	
 	
@@ -591,14 +648,17 @@ for pageID in bbxs_dict:
 				
 				new_bb = None
 				# No missing probability
-				if not args.eps > 0.0 and not args.complex:
+				if not args.eps != -1 and not args.complex and not args.total != 1:
 					new_bb = merge_bb_group(bbxs_grp)
 				# Simple estimation of the missing probabilty by providing a constant value
-				elif args.eps > 0.0:
-					new_bb = merge_bb_group_missqty(bbxs_grp, line_dict[pageID], keyword, args.eps)
+				elif args.eps != -1:
+					new_bb, total_score = merge_bb_group_missqty(bbxs_grp, line_dict[pageID], keyword, args.eps)
+					max_total = max(max_total, total_score)
 				# Complex method based on an heuristic to estimate the amount of noise missing
 				elif args.complex:
 					new_bb = merged_bb_score_fast(bbxs_grp, line_dict[pageID], keyword)
+				elif args.total != -1:
+					new_bb = new_bb, total_score = merge_bb_group_total_qty(bbxs_grp, line_dict[pageID], keyword, args.total)
 				merged_bb_list.append(new_bb)
 
 			bb_list = merged_bb_list
@@ -640,3 +700,5 @@ if args.show_timings:
 	print("Time to group BBxs: " + str(time_group))
 	print("Time to merge: " + str(time_merge))
 	print("Time to write results: " + str(time_write))
+
+print("Max total score: " +str(max_total))

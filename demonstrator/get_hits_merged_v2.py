@@ -12,6 +12,7 @@ if __name__ == '__main__':
 	parser.add_argument('output_index', help='path to the outputted index')
 	parser.add_argument('--threshold', type=float, default=0.5, help='If a bounding boxes has more percent of its area in one line of the GT containing this keyword, then consider it has a hit')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
+	parser.add_argument('--only-gt', action='store_true', help='Do not read index and show the gt')
 
 	args = parser.parse_args()
 
@@ -115,36 +116,37 @@ output_file = open(args.output_index, 'w')
 
 # Read the index
 index_dict = {}
-with open(args.index_path, 'r') as index_file:
-	for line in index_file:
-		line = line[:-1]
-		pageID, keyword, score_str, xmin_str, ymin_str, xmax_str, ymax_str = line.split(' ')
-		
-		score = float(score_str)
-		xmin = int(xmin_str)
-		ymin = int(ymin_str)
-		xmax = int(xmax_str)
-		ymax = int(ymax_str)
-		
-		if score >= args.minimum_score and keyword != "":
-			bb = BB(xmin, ymin, xmax, ymax, score)
+if not args.only_gt:
+	with open(args.index_path, 'r') as index_file:
+		for line in index_file:
+			line = line[:-1]
+			pageID, keyword, score_str, xmin_str, ymin_str, xmax_str, ymax_str = line.split(' ')
 			
-			hit = 0
-			if pageID in bbxs_dict_gt and keyword in bbxs_dict_gt[pageID]:
-				bbxs_gt_list = bbxs_dict_gt[pageID][keyword]
+			score = float(score_str)
+			xmin = int(xmin_str)
+			ymin = int(ymin_str)
+			xmax = int(xmax_str)
+			ymax = int(ymax_str)
+			
+			if score >= args.minimum_score and keyword != "":
+				bb = BB(xmin, ymin, xmax, ymax, score)
 				
-				# ~ for bb8 in bbxs_gt_list:
-				for i in range(len(bbxs_gt_list[0])):
-					bb8 = bbxs_gt_list[0][i]
-					if is_intersection_bb(bb, bb8):
-						percentagearea = overlap_percent(bb, bb8)
-						if percentagearea >= args.threshold:
-							hit = 1
-							bbxs_dict_gt[pageID][keyword][1][i] = True # To tell that the keyword has been detected once
-			
-			# Write the hits
-			line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
-			output_file.write(line_to_write)				
+				hit = 0
+				if pageID in bbxs_dict_gt and keyword in bbxs_dict_gt[pageID]:
+					bbxs_gt_list = bbxs_dict_gt[pageID][keyword]
+					
+					# ~ for bb8 in bbxs_gt_list:
+					for i in range(len(bbxs_gt_list[0])):
+						bb8 = bbxs_gt_list[0][i]
+						if is_intersection_bb(bb, bb8):
+							percentagearea = overlap_percent(bb, bb8)
+							if percentagearea >= args.threshold:
+								hit = 1
+								bbxs_dict_gt[pageID][keyword][1][i] = True # To tell that the keyword has been detected once
+				
+				# Write the hits
+				line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
+				output_file.write(line_to_write)				
 
 # Get the keywords missed
 for pageID in bbxs_dict_gt:

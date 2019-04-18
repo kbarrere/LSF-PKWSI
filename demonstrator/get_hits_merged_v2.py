@@ -12,6 +12,7 @@ if __name__ == '__main__':
 	parser.add_argument('output_index', help='path to the outputted index')
 	parser.add_argument('--threshold', type=float, default=0.5, help='If a bounding boxes has more percent of its area in one line of the GT containing this keyword, then consider it has a hit')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
+	parser.add_argument('--width-extension', type=float, default=0.0, help='By how much percent the size of the bbx should be extendted on horizontal axis')
 	parser.add_argument('--only-gt', action='store_true', help='Do not read index and show the gt')
 
 	args = parser.parse_args()
@@ -94,8 +95,13 @@ for line in gt_file:
 			begin_pos = pos
 			end_pos = pos + len(keyword)
 			
-			xmin = line_xmin + int(float(begin_pos) / float(line_gt_len) * float(line_width))
-			xmax = line_xmin + int(float(end_pos) / float(line_gt_len) * float(line_width))
+			xmin = line_xmin + float(begin_pos) / float(line_gt_len) * float(line_width)
+			xmax = line_xmin + float(end_pos) / float(line_gt_len) * float(line_width)
+			
+			if args.width_extension > 0.0:
+				keyword_width = xmax - xmin + 1
+				xmin = int(max(line_xmin, xmin - args.width_extension / 2 * keyword_width))
+				xmax = int(min(line_xmax, xmax + args.width_extension / 2 * keyword_width))
 			
 			bb = BB(xmin, line_ymin, xmax, line_ymax, 1)
 			
@@ -145,7 +151,7 @@ if not args.only_gt:
 								bbxs_dict_gt[pageID][keyword][1][i] = True # To tell that the keyword has been detected once
 				
 				# Write the hits
-				line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
+				line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(int(xmin)) + ' ' + str(int(ymin)) + ' ' + str(int(xmax)) + ' ' + str(int(ymax)) + '\n' 
 				output_file.write(line_to_write)				
 
 # Get the keywords missed
@@ -157,7 +163,7 @@ for pageID in bbxs_dict_gt:
 				xmin, ymin, xmax, ymax = bb.get_coords()
 				
 				# Write the misses
-				line_to_write = pageID + ' ' + keyword + ' ' + '1' + ' ' + '-1' + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n' 
+				line_to_write = pageID + ' ' + keyword + ' ' + '1' + ' ' + '-1' + ' ' + str(int(xmin)) + ' ' + str(int(ymin)) + ' ' + str(int(xmax)) + ' ' + str(int(ymax)) + '\n' 
 				output_file.write(line_to_write)
 
 output_file.close()

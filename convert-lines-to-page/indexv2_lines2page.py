@@ -4,7 +4,7 @@ import argparse
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Convert the Indexes from line level to page level')
-parser.add_argument('lines_file', help='path to the text file containing the index at the line level')
+parser.add_argument('lines_file', help='path to the text file containing the index at the line level. Line in the format pageID word probability')
 parser.add_argument('page_file', help='path to the text file that will contain the index at the page level')
 parser.add_argument('--id-list-file', help='path to the file where to store the line ids at the page level')
 

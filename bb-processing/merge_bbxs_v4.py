@@ -648,7 +648,7 @@ for pageID in bbxs_dict:
 				
 				new_bb = None
 				# No missing probability
-				if not args.eps != -1 and not args.complex and not args.total != 1:
+				if not args.eps != -1 and not args.complex and not args.total != -1:
 					new_bb = merge_bb_group(bbxs_grp)
 				# Simple estimation of the missing probabilty by providing a constant value
 				elif args.eps != -1:
@@ -700,5 +700,3 @@ if args.show_timings:
 	print("Time to group BBxs: " + str(time_group))
 	print("Time to merge: " + str(time_merge))
 	print("Time to write results: " + str(time_write))
-
-print("Max total score: " +str(max_total))

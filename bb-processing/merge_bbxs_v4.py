@@ -6,7 +6,7 @@ import math
 if __name__ == '__main__':
 	
 	# Parse arguments
-	parser = argparse.ArgumentParser(description='Merge Bounding boxes. Version 2, only using Geometry rules')
+	parser = argparse.ArgumentParser(description='Merge Bounding boxes. Version 4, only using Geometry rules')
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines (in the format pageID.LineID keyword score startframe endframe totalframe')
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated with the index')
 	parser.add_argument('output_index', help='path to the outputted index. in the format pageID keyword score xmin ymin xmax ymax')
@@ -647,7 +647,7 @@ for pageID in bbxs_dict:
 				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
 				
 				new_bb = None
-				# No missing probability
+				# Default, set the score equal to the maximum of overlapping BBs
 				if not args.eps != -1 and not args.complex and not args.total != -1:
 					new_bb = merge_bb_group(bbxs_grp)
 				# Simple estimation of the missing probabilty by providing a constant value

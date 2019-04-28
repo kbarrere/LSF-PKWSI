@@ -76,7 +76,7 @@ for pageID in dict1:
 				if score2 == -1:
 					only1.append((score1, pageID, keyword))
 
-print("Find " + str(len(only1)) + " examples")
+print("Found " + str(len(only1)) + " examples")
 print("Obtaining the best " + str(args.top))
 sort(only1)
 
@@ -99,7 +99,7 @@ for pageID in dict2:
 				if score1 == -1:
 					only2.append((score2, pageID, keyword))
 
-print("Find " + str(len(only2)) + " examples")
+print("Found " + str(len(only2)) + " examples")
 print("Obtaining the best " + str(args.top))
 sort(only2)
 
@@ -122,7 +122,7 @@ for pageID in dict1:
 				if score2 != -1 and score1 > score2:
 					better1.append((score1 - score2, pageID, keyword))
 
-print("Find " + str(len(better1)) + " examples")
+print("Found " + str(len(better1)) + " examples")
 print("Obtaining the best " + str(args.top))
 sort(better1)
 
@@ -145,7 +145,7 @@ for pageID in dict2:
 				if score1 != -1 and score1 < score2:
 					better2.append((score2 - score1, pageID, keyword))
 
-print("Find " + str(len(better2)) + " examples")
+print("Found " + str(len(better2)) + " examples")
 print("Obtaining the best " + str(args.top))
 sort(better2)
 

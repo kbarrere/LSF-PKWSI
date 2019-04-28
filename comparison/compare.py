@@ -10,6 +10,7 @@ if __name__ == '__main__':
 	
 	args = parser.parse_args()
 
+print("===============================================================")
 print("Reading first file...")
 
 dict1 = {}
@@ -60,7 +61,54 @@ def sort(l):
 				l[j] = (diff2, pageID2, keyword2)
 				l[j+1] = (diff1, pageID1, keyword1)
 
-# Where method 1 > method 2
+# When method 1 successes only
+print("---------------------------------------------------------------")
+print("Computing example when method 1 find something and not method 2")
+
+only1 = []
+
+for pageID in dict1:
+	for keyword in dict1[pageID]:
+		hit1, score1 = dict1[pageID][keyword]
+		if hit1 and score1 != -1:
+			if pageID in dict2 and keyword in dict2[pageID]:
+				hit2, score2 = dict2[pageID][keyword]
+				if score2 == -1:
+					only1.append((score1, pageID, keyword))
+
+print("Find " + str(len(only1)) + " examples")
+print("Obtaining the best " + str(args.top))
+sort(only1)
+
+for i in range(min(len(only1), args.top)):
+	print(only1[i])
+
+
+# When method 2 successes only
+print("---------------------------------------------------------------")
+print("Computing example when method 2 find something and not method 1")
+
+only2 = []
+
+for pageID in dict2:
+	for keyword in dict2[pageID]:
+		hit2, score2 = dict2[pageID][keyword]
+		if hit2 and score2 != -1:
+			if pageID in dict1 and keyword in dict1[pageID]:
+				hit1, score1 = dict1[pageID][keyword]
+				if score1 == -1:
+					only2.append((score2, pageID, keyword))
+
+print("Find " + str(len(only2)) + " examples")
+print("Obtaining the best " + str(args.top))
+sort(only2)
+
+for i in range(min(len(only2), args.top)):
+	print(only2[i])
+
+
+# Where method 1 > method 2 and hit in both cases
+print("---------------------------------------------------------------")
 print("Computing example when method 1 > method 2")
 
 better1 = []
@@ -71,20 +119,19 @@ for pageID in dict1:
 		if hit1 and score1 != -1:
 			if pageID in dict2 and keyword in dict2[pageID]:
 				hit2, score2 = dict2[pageID][keyword]
-				if score2 == -1:
-					score2 = 0
-				if score1 > score2:
+				if score2 != -1 and score1 > score2:
 					better1.append((score1 - score2, pageID, keyword))
 
 print("Find " + str(len(better1)) + " examples")
 print("Obtaining the best " + str(args.top))
 sort(better1)
 
-for i in range(args.top):
+for i in range(min(len(better1), args.top)):
 	print(better1[i])
 
 
 # Where method 1 < method 2
+print("---------------------------------------------------------------")
 print("Computing example when method 1 < method 2")
 
 better2 = []
@@ -95,14 +142,14 @@ for pageID in dict2:
 		if hit2 and score2 != -1:
 			if pageID in dict1 and keyword in dict1[pageID]:
 				hit1, score1 = dict1[pageID][keyword]
-				if score1 == -1:
-					score1 = 0
-				if score1 < score2:
+				if score1 != -1 and score1 < score2:
 					better2.append((score2 - score1, pageID, keyword))
 
 print("Find " + str(len(better2)) + " examples")
 print("Obtaining the best " + str(args.top))
 sort(better2)
 
-for i in range(args.top):
+for i in range(min(len(better2), args.top)):
 	print(better2[i])
+	
+print("===============================================================")

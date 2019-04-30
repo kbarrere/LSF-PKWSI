@@ -53,7 +53,7 @@ file2.close()
 
 def sort(l):
 	n = len(l)
-	for i in range(n-1):
+	for i in range((n-1), -1, -1):
 		for j in range(i):
 			diff1, pageID1, keyword1 = l[j]
 			diff2, pageID2, keyword2 = l[j+1]

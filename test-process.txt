@@ -185,12 +185,16 @@ while read L; do
     outfile=chars2words/words-$lineID.ark;
     pseudowords=chars2words/pseudowords-$lineID.txt;
     pseudowords_t=chars2words/pseudowords_t-$lineID.txt;
-    tempfile=chars2words/tempfile-$lineID.txt;
+    # tempfile=chars2words/tempfile-$lineID.txt;
     timeout -s 9 10s lattice-char-to-word --beam=15 --save-symbols=$pseudowords --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:$outfile" ||
     lattice-char-to-word --beam=5 --save-symbols=$pseudowords --acoustic-scale=1.16256062048 "1 2 3 4 6 7 8 9 10 11 12 13 24 25 26 27 28 29 30 90 91 92 97 98 99 100 101 102 103" "scp:echo $L |" "ark:$outfile";
     awk '{print $2,gensub(/_/," ","g",$1)}' $pseudowords | int2sym.pl -f 2- Models/test/graph/words.txt | awk '{cad=""; for (i=2;i<=NF;i++) cad=cad""$i; print cad"\t"$1}' > $pseudowords_t;
     lattice-copy "ark:$outfile" ark,t:- | int2sym.pl -f 3 $pseudowords_t | 
     convert_slf.pl - SLFs;
+    # It is taking so much disk memory ... Clear the file !
+    rm $pseudowords;
+    rm $pseudowords_t;
+    rm $outfile;
   }
   RunLOCKED ToRUN
 done;

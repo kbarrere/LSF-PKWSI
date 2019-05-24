@@ -1,3 +1,7 @@
+import argparse
+from xmlPAGE import *
+import math
+
 if __name__ == '__main__':
 	
 	# Parse arguments
@@ -5,9 +9,9 @@ if __name__ == '__main__':
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines (in the format pageID.LineID keyword score startframe endframe totalframe')
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated with the index')
 	
-	parser.add_argument('--rec', type=int, default=-1, help='number of recursive merging. A value of -1 (Default) means go until it has converged')
 	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
+	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
 	
 	args = parser.parse_args()
 
@@ -36,6 +40,24 @@ class BB:
 	
 	def __str__(self):
 		return "xmin="+str(self.xmin)+" ymin="+str(self.ymin)+" xmax="+str(self.xmax)+" ymax="+str(self.ymax)+" score="+str(self.score)
+
+def is_in_range(xmin, xmax, x):
+	return (xmin <= x and x <= xmax)
+
+def is_intersection_segment(xmin1, xmax1, xmin2, xmax2):
+	return (is_in_range(xmin1, xmax1, xmin2) or is_in_range(xmin1, xmax1, xmax2) or is_in_range(xmin2, xmax2, xmin1) or is_in_range(xmin2, xmax2, xmax1))
+
+def is_intersection_bb(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
+
+def bb_equal(bb1, bb2):
+	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	return (xmin1 == xmin2 and ymin1 == ymin2 and xmax1 == xmax2 and ymax1 == ymax2)
 
 def overlap_percent(bb1, bb2):
 	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
@@ -122,14 +144,77 @@ def merge_bb_group0(bb_list):
 	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
 	
 	return bb
+	
+def merge_bb_groupi(bb_list, bi, debug=False):
+	total_mass = 0.0
+	total_x = 0.0
+	total_y = 0.0
+	total_w = 0.0
+	total_h = 0.0
+	max_score = 0.0
+	
+	for bb in bb_list:
+		xmin, ymin, xmax, ymax = bb.get_coords()
+		
+		if debug:
+			print("beta: " + str(bb))
+		
+		pbeta = overlap_percent(bb, bi)
+		if debug:
+			print("P(beta): " + str(pbeta))
+		
+		score = bb.get_score() * pbeta
+		if debug:
+			print("score: " + str(score))
+		
+		total_mass += score
+		total_x += score * ((xmax + xmin) / 2)
+		total_y += score * ((ymax + ymin) / 2)
+		total_w += score*(xmax - xmin)
+		total_h += score*(ymax - ymin)
+		
+		max_score = max(max_score, score)
+	
+	# Temporary solution to avoid division by 0
+	if debug:
+		print("total mass: " + str(total_mass))
+	if total_mass < 0.000001:
+		return bb_list[0]
+	
+	center_x = total_x / total_mass
+	center_y = total_y / total_mass
+	center_w = total_w / total_mass
+	center_h = total_h / total_mass
+	
+	xmin = center_x - center_w / 2
+	xmax = center_x + center_w / 2
+	ymin = center_y - center_h / 2
+	ymax = center_y + center_h / 2
+	
+	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
+	
+	return bb
 
+def merge_lists(list1, list2):
+	output_list = []
+	
+	for el1 in list1:
+		output_list.append(el1)
+		
+	for el2 in list2:
+		if el2 not in output_list:
+			output_list.append(el2)
+	
+	return output_list
+	
+def append_lists(list1, list2):
+	for el2 in list2:
+		if el2 not in list1:
+			list1.append(el2)
 
 
 
 line_dict = {} # Stocks line and their position info, their number of frames, ...
-
-time_index = 0
-time_index_start = time.time()
 
 # Reading the index file
 index_file = open(args.index_path, 'r')
@@ -220,7 +305,8 @@ for page_path in args.pages_path:
 					if keyword not in bbxs_dict[pageID]:
 						bbxs_dict[pageID][keyword] = []
 					
-					bbxs_dict[pageID][keyword].append(bb)
+					if score > args.minimum_score:
+						bbxs_dict[pageID][keyword].append(bb)
 					
 	else:
 		print("Could not find any page indexed with pageID: " + pageID)
@@ -250,7 +336,7 @@ for pageID in line_dict:
 
 
 
-			
+optiboxs = [] # Contains the best bbxs at each step
 
 # Get a group ?	
 for pageID in bbxs_dict:
@@ -262,6 +348,8 @@ for pageID in bbxs_dict:
 		for bb in bb_list:
 			original_bb_list.append([bb])
 		
+		bbxs_grps = []
+		original_bbxs_grps = []
 			
 		for i1 in range(len(bb_list)):
 			bb1 = bb_list[i1]
@@ -353,6 +441,10 @@ for pageID in bbxs_dict:
 		for bbxs_grp in original_bbxs_grps:
 
 			new_bb = merge_bb_group0(bbxs_grp)
+			# ~ if new_bb.get_score() > args.minimum_score:
+				# ~ merged_bb_list.append(new_bb)
+			# ~ else:
+				# ~ print("OSKOUR")
 			merged_bb_list.append(new_bb)
 
 		bb_list = merged_bb_list
@@ -367,4 +459,88 @@ for pageID in bbxs_dict:
 			score = bb.get_score()
 			# ~ line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
 			# ~ output.write(line_to_write)
-		
+			
+			i = 0
+			if len(optiboxs) <= i:
+				optiboxs.append({})
+			if pageID not in optiboxs[i]:
+				optiboxs[i][pageID] = {}
+			if keyword not in optiboxs[i][pageID]:
+				optiboxs[i][pageID][keyword] = []
+			
+			optiboxs[i][pageID][keyword].append(bb)
+
+# ~ print(optiboxs[0]["M_Breitenberg_009-01_0098"]["BLANK"])
+# ~ print(optiboxs[0]["M_Breitenberg_009-01_0098"])
+
+
+
+
+
+def scores(optiboxs, i, bbs_dict, scores):
+	total_score = 0
+	for pageID in optiboxs[i]:
+		for keyword in optiboxs[i][pageID]:
+			for b in optiboxs[i][pageID][keyword]:
+				s = 0
+				for beta in bbxs_dict[pageID][keyword]:
+					if is_intersection_bb(beta, b):
+						index_score = beta.get_score()
+						beta_score = overlap_percent(beta, b)
+						s += beta_score * index_score
+				
+				if len(scores) <= i:
+					scores.append({})
+				if pageID not in scores[i]:
+					scores[i][pageID] = {}
+				if keyword not in scores[i][pageID]:
+					scores[i][pageID][keyword] = []
+				scores[i][pageID][keyword].append(s)
+				
+				total_score += s
+	
+	return total_score
+
+scs = []
+total_sc = scores(optiboxs, 0, bbxs_dict, scs)
+print(total_sc)
+# ~ print(scs)
+
+
+
+
+def iterate(optiboxs, i, bbs_dict, scs):
+	
+	print("==========================================================")
+	print("Iteration " + str(i))
+	
+	for pageID in optiboxs[i-1]:
+		for keyword in optiboxs[i-1][pageID]:
+			for b in optiboxs[i-1][pageID][keyword]:			
+				s = 0
+				beta_list = []
+				for beta in bbxs_dict[pageID][keyword]:
+					if is_intersection_bb(beta, b):
+						beta_list.append(beta)
+				
+				if len(beta_list) > 0:
+					bi = merge_bb_groupi(beta_list, b)
+					
+					if len(optiboxs) <= i:
+						optiboxs.append({})
+					if pageID not in optiboxs[i]:
+						optiboxs[i][pageID] = {}
+					if keyword not in optiboxs[i][pageID]:
+						optiboxs[i][pageID][keyword] = []
+					
+					optiboxs[i][pageID][keyword].append(bi)
+	
+	total_sc = scores(optiboxs, i, bbxs_dict, scs)
+	print("Total score: " + str(total_sc))
+
+# ~ for i in range(1, 10):
+	# ~ iterate(optiboxs, i, bbxs_dict, scs)
+i = 1
+while True:
+	iterate(optiboxs, i, bbxs_dict, scs)
+	i += 1

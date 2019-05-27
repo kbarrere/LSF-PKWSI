@@ -231,50 +231,72 @@ if args.pages_path:
 
 # Create the resulting index file
 output = open(args.output_index_path, 'w')
-for pageID in bbxs_dict:
-	for keyword in bbxs_dict[pageID]:
-		bb_list = bbxs_dict[pageID][keyword][0]
-		frame_list = bbxs_dict[pageID][keyword][1]
-		for i in range(len(bb_list)):
-			bb = bb_list[i]
-			lineID, start_frame, end_frame, total_frame = frame_list[i]
-			
-			score = bb.get_score()
-			
-			pbon = 1.0
-			if args.overlap_number:
-				overlap = number_intersection(bb, bb_list) - 1
-				pbon = sigmoid(overlap, 5, 1.0)
-			
-			pbop = 1.0
-			if args.overlap_percent:
-				overlap100 = total_overlap_percent(bb, bb_list) - 1.0
-				pbop = sigmoid(overlap100, 8, 2.75)
-			
-			pbos = 1.0
-			if args.overlap_score:
-				overlapscore = total_overlap_score(bb, bb_list) - bb.get_score()
-				pbos = sigmoid(overlapscore, 25, 12.5)
-				# ~ pbos = pbos if overlapscore > 0.30 else 0.0
-			
-			pbosu = 1.0
-			if args.overlap_score_union:
-				overlapscore = total_overlap_score_union(bb, bb_list) - bb.get_score()
-				pbosu = sigmoid(overlapscore, 42, 18)
-				# ~ pbosu = pbosu if overlapscore > 0.23725 else 0.0
-			
-			pbgs = 1.0
-			if args.gaussian_shape:
-				nbr_frames = end_frame - start_frame
-				len_keyword = len(keyword)
-				frames_per_char = float(nbr_frames)/float(len_keyword)
-				pbgs = gaussian(frames_per_char, 0, 62) # For large bbxs
-				pbgs = pbgs * sigmoid(frames_per_char, 3, 0) # For small bbxs
-			
-			pb = pbon * pbop * pbos * pbosu * pbgs
-			score = pb * score
-			
-			line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
-			output.write(line_to_write)
-			
+
+
+if args.index_format == 'frames':
+	for pageID in bbxs_dict:
+		for keyword in bbxs_dict[pageID]:
+			bb_list = bbxs_dict[pageID][keyword][0]
+			frame_list = bbxs_dict[pageID][keyword][1]
+			for i in range(len(bb_list)):
+				bb = bb_list[i]
+				lineID, start_frame, end_frame, total_frame = frame_list[i]
+				
+				score = bb.get_score()
+				
+				pbon = 1.0
+				if args.overlap_number:
+					overlap = number_intersection(bb, bb_list) - 1
+					pbon = sigmoid(overlap, 5, 1.0)
+				
+				pbop = 1.0
+				if args.overlap_percent:
+					overlap100 = total_overlap_percent(bb, bb_list) - 1.0
+					pbop = sigmoid(overlap100, 8, 2.75)
+				
+				pbos = 1.0
+				if args.overlap_score:
+					overlapscore = total_overlap_score(bb, bb_list) - bb.get_score()
+					pbos = sigmoid(overlapscore, 25, 12.5)
+					# ~ pbos = pbos if overlapscore > 0.30 else 0.0
+				
+				pbosu = 1.0
+				if args.overlap_score_union:
+					overlapscore = total_overlap_score_union(bb, bb_list) - bb.get_score()
+					pbosu = sigmoid(overlapscore, 42, 18)
+					# ~ pbosu = pbosu if overlapscore > 0.23725 else 0.0
+				
+				pbgs = 1.0
+				if args.gaussian_shape:
+					nbr_frames = end_frame - start_frame
+					len_keyword = len(keyword)
+					frames_per_char = float(nbr_frames)/float(len_keyword)
+					pbgs = gaussian(frames_per_char, 0, 62) # For large bbxs
+					pbgs = pbgs * sigmoid(frames_per_char, 3, 0) # For small bbxs
+				
+				pb = pbon * pbop * pbos * pbosu * pbgs
+				score = pb * score
+				
+				line_to_write = pageID+'.'+lineID+' '+keyword+' '+str(score)+' '+str(start_frame)+' '+str(end_frame)+' '+str(total_frame)+'\n'
+				output.write(line_to_write)
+
+elif args.index_format == 'pixels':
+	for pageID in bbxs_dict:
+		for keyword in bbxs_dict[pageID]:
+			bb_list = bbxs_dict[pageID][keyword]
+			for bb in bb_list:
+				score = bb.get_score()
+				xmin, ymin, xmax, ymax = bb.get_coords()
+				
+				pbop = 1.0
+				if args.overlap_percent:
+					overlap100 = total_overlap_percent(bb, bb_list) - 1.0
+					pbop = sigmoid(overlap100, 8, 2.75)
+				
+				pb = pbop
+				score = pb * score
+				
+				line_to_write = pageID+' '+keyword+' '+str(score)+' '+str(xmin)+' '+str(ymin)+' '+str(xmax)+' '+str(ymax)+'\n'
+				output.write(line_to_write)
+				
 output.close()

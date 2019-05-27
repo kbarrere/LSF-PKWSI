@@ -144,11 +144,13 @@ if not args.only_gt:
 					# ~ for bb8 in bbxs_gt_list:
 					for i in range(len(bbxs_gt_list[0])):
 						bb8 = bbxs_gt_list[0][i]
-						if is_intersection_bb(bb, bb8):
-							percentagearea = overlap_percent(bb, bb8)
-							if percentagearea >= args.threshold:
-								hit = 1
-								bbxs_dict_gt[pageID][keyword][1][i] = True # To tell that the keyword has been detected once
+						if not bbxs_gt_list[1][i]:
+							if is_intersection_bb(bb, bb8):
+								percentagearea = overlap_percent(bb, bb8)
+								if percentagearea >= args.threshold:
+									hit = 1
+									bbxs_dict_gt[pageID][keyword][1][i] = True # To tell that the keyword has been detected once
+									break
 				
 				# Write the hits
 				line_to_write = pageID + ' ' + keyword + ' ' + str(hit) + ' ' + str(score) + ' ' + str(int(xmin)) + ' ' + str(int(ymin)) + ' ' + str(int(xmax)) + ' ' + str(int(ymax)) + '\n' 

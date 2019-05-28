@@ -2,6 +2,8 @@ import argparse
 from xmlPAGE import *
 import math
 
+import matplotlib.pyplot as plt
+
 if __name__ == '__main__':
 	
 	# Parse arguments
@@ -12,6 +14,7 @@ if __name__ == '__main__':
 	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
+	parser.add_argument('--iterations', type=int, default=10, help='Number of iterations to run')
 	
 	args = parser.parse_args()
 
@@ -506,6 +509,10 @@ total_sc = scores(optiboxs, 0, bbxs_dict, scs)
 print(total_sc)
 # ~ print(scs)
 
+x = [0]
+y = [total_sc]
+
+
 
 
 
@@ -537,10 +544,20 @@ def iterate(optiboxs, i, bbs_dict, scs):
 	
 	total_sc = scores(optiboxs, i, bbxs_dict, scs)
 	print("Total score: " + str(total_sc))
+	
+	return total_sc
 
 # ~ for i in range(1, 10):
 	# ~ iterate(optiboxs, i, bbxs_dict, scs)
 i = 1
-while True:
-	iterate(optiboxs, i, bbxs_dict, scs)
+while i < args.iterations:
+	total_sc = iterate(optiboxs, i, bbxs_dict, scs)
+	x.append(i)
+	y.append(total_sc)
 	i += 1
+
+plt.plot(x, y)
+plt.title("Evolution of best BB's relevance")
+plt.xlabel("Iterations")
+plt.ylabel("Sum of BB's relevance")
+plt.show()

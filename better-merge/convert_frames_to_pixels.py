@@ -11,6 +11,24 @@ if __name__ == '__main__':
 
 
 
+def get_max_coords(coords):
+	xmin = coords[0][0]
+	ymin = coords[0][1]
+	xmax = coords[0][0]
+	ymax = coords[0][1]
+	
+	for i in range(1, len(coords)):
+		x = coords[i][0]
+		y = coords[i][1]
+		
+		xmin = min(xmin, x)
+		ymin = min(ymin, y)
+		xmax = max(xmax, x)
+		ymax = max(ymax, y)
+	
+	return xmin, ymin, xmax, ymax
+
+
 # Reading the index file
 index_file = open(args.index_file, 'r')
 index_dict = {}
@@ -48,9 +66,10 @@ for page_path in args.pages_path:
 			lineID = page.get_id(textline_element)
 			
 			line_coords = page.get_coords(textline_element)
-			line_xmin, line_ymin = line_coords[0]
-			line_xmax, line_ymax = line_coords[2]
-			line_width = line_xmax - line_xmin
+			
+			line_xmin, line_ymin, line_xmax, line_ymax = get_max_coords(line_coords)
+			
+			line_width = line_xmax - line_xmin + 1
 			
 			if lineID in index_dict[pageID]:
 				for detected in index_dict[pageID][lineID]:

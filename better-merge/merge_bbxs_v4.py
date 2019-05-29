@@ -518,6 +518,10 @@ output = open(args.output_index, 'w')
 
 
 
+max_bbs = 0
+total = 0
+n = 0
+
 for pageID in bbxs_dict:
 	c = 0
 	cm = len(bbxs_dict[pageID])
@@ -637,6 +641,16 @@ for pageID in bbxs_dict:
 				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
 				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
 				
+				nbr_bb = len(bbxs_grp)
+				total += nbr_bb
+				n += 1
+				if nbr_bb > max_bbs:
+					print("-------------------------------------------")
+					print("pageID: " + pageID)
+					print("keyword: " + keyword)
+					print("N: " + str(nbr_bb))
+					max_bbs = nbr_bb
+				
 				new_bb = None
 				# Default, set the score equal to the maximum of overlapping BBs
 				if not args.eps != -1 and not args.complex and not args.total != -1:
@@ -677,3 +691,6 @@ for pageID in bbxs_dict:
 			output.write(line_to_write)
 
 output.close()
+
+print("Total: " + str(total))
+print("n: " + str(n))

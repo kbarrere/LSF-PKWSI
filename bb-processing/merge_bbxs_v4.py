@@ -520,6 +520,8 @@ time_group = 0
 time_merge = 0
 time_write = 0
 
+max_bbs = 0
+
 for pageID in bbxs_dict:
 	c = 0
 	cm = len(bbxs_dict[pageID])
@@ -645,6 +647,14 @@ for pageID in bbxs_dict:
 			for bbxs_grp in original_bbxs_grps:
 				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
 				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
+				
+				nbr_bb = len(bbxs_grp)
+				if nbr_bb > max_bbs:
+					print("-------------------------------------------")
+					print("pageID: " + pageID)
+					print("keyword: " + keyword)
+					print("N: " + str(nbr_bb))
+					max_bbs = nbr_bb
 				
 				new_bb = None
 				# Default, set the score equal to the maximum of overlapping BBs

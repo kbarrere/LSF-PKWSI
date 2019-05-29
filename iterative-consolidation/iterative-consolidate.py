@@ -435,6 +435,8 @@ for pageID in line_dict:
 optiboxs = [] # Contains the best bbxs at each step
 optiboxs.append({})
 
+max_bbs = 0
+
 # Get a group ?	
 for pageID in bbxs_dict:
 	for keyword in bbxs_dict[pageID]:
@@ -537,6 +539,9 @@ for pageID in bbxs_dict:
 		
 		for bbxs_grp in original_bbxs_grps:
 
+			nbr_bb = len(bbxs_grp)
+			max_bbs = max(max_bbs, nbr_bb)
+
 			new_bb = merge_bb_group0(bbxs_grp)
 			# ~ if new_bb.get_score() > args.minimum_score:
 				# ~ merged_bb_list.append(new_bb)
@@ -570,7 +575,7 @@ for pageID in bbxs_dict:
 # ~ print(optiboxs[0]["M_Breitenberg_009-01_0098"]["BLANK"])
 # ~ print(optiboxs[0]["M_Breitenberg_009-01_0098"])
 
-
+print("max number of bb in a group: " + str(max_bbs))
 
 
 

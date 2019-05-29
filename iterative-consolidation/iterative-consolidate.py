@@ -1,6 +1,7 @@
 import argparse
 from xmlPAGE import *
 import math
+from PIL import Image
 
 import matplotlib.pyplot as plt
 
@@ -11,6 +12,7 @@ if __name__ == '__main__':
 	parser.add_argument('index_path', help='path to index file containing keywords, score and positioninng in the lines (in the format pageID.LineID keyword score startframe endframe totalframe')
 	parser.add_argument('pages_path', nargs='+', help='path to page xml file associated with the index')
 	
+	parser.add_argument('--img-path', help='Plot the image, all raw bbxs and the best bb.')
 	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
 	parser.add_argument('--min-intersection', type=float, default=0.2, help='minimum percentage of a bb intersecting with other bbxs in a group for a merge')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
@@ -62,6 +64,24 @@ def bb_equal(bb1, bb2):
 	
 	return (xmin1 == xmin2 and ymin1 == ymin2 and xmax1 == xmax2 and ymax1 == ymax2)
 
+# ~ def overlap_percent(bb1, bb2):
+	# ~ xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	# ~ xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	# ~ xmin = max(xmin1, xmin2)
+	# ~ ymin = max(ymin1, ymin2)
+	# ~ xmax = min(xmax1, xmax2)
+	# ~ ymax = min(ymax1, ymax2)
+	
+	# ~ base_area = (xmax1 - xmin1) * (ymax1 - ymin1)
+	# ~ area = (xmax - xmin) * (ymax - ymin)
+	
+	# ~ percentage = 0.0
+	# ~ if base_area > 0.0:
+		# ~ percentage = float(area)/float(base_area)
+	
+	# ~ return percentage
+
 def overlap_percent(bb1, bb2):
 	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
 	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
@@ -71,14 +91,18 @@ def overlap_percent(bb1, bb2):
 	xmax = min(xmax1, xmax2)
 	ymax = min(ymax1, ymax2)
 	
-	base_area = (xmax1 - xmin1) * (ymax1 - ymin1)
+	base_area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
+	base_area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
 	area = (xmax - xmin) * (ymax - ymin)
 	
+	union_area = (float(base_area1)+float(base_area2)-float(area))
+	
 	percentage = 0.0
-	if base_area > 0.0:
-		percentage = float(area)/float(base_area)
+	if union_area > 0.0:
+		percentage = float(area)/union_area
 	
 	return percentage
+	
 
 def total_overlap_percent(bb, bb_list, debug=False):
 	c = 0.
@@ -101,6 +125,14 @@ def merge_bb_group0(bb_list):
 	total_h = 0.0
 	max_score = 0.0
 	
+	if len(bb_list) == 1:
+		bb = bb_list[0]
+		pbeta = sigmoid(0, 8, 2.75)
+		score = bb.get_score() * pbeta
+		xmin, ymin, xmax, ymax = bb.get_coords()
+		bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), score)
+		return bb
+		
 	for bb in bb_list:
 		xmin, ymin, xmax, ymax = bb.get_coords()
 		
@@ -155,6 +187,14 @@ def merge_bb_groupi(bb_list, bi, debug=False):
 	total_w = 0.0
 	total_h = 0.0
 	max_score = 0.0
+	
+	if len(bb_list) == 1:
+		bb = bb_list[0]
+		pbeta = 1
+		score = bb.get_score() * pbeta
+		xmin, ymin, xmax, ymax = bb.get_coords()
+		bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), score)
+		return bb
 	
 	for bb in bb_list:
 		xmin, ymin, xmax, ymax = bb.get_coords()
@@ -214,6 +254,59 @@ def append_lists(list1, list2):
 	for el2 in list2:
 		if el2 not in list1:
 			list1.append(el2)
+
+
+
+def draw_line(img, x1, y1, x2, y2, line_thickness=1, color=(255, 0, 0), dx=0.1):
+	width, height = img.size
+	
+	if x1 != x2:
+		a = float((y1 - y2)) / float((x1 - x2))
+		b = y1 - a * x1
+		
+		for xt in np.arange(min(x1, x2), max(x1, x2), dx):
+			yt = a*xt + b
+			for dxt in np.arange(-float(line_thickness)/2, float(line_thickness)/2):
+				for dyt in np.arange(-float(line_thickness)/2, float(line_thickness)/2):
+					x = int(min(max(xt + dxt, 0), width-1))
+					y = int(min(max(yt + dyt, 0), height-1))
+					img.putpixel((int(x), int(y)), color)
+	
+	elif y1 != y2:
+		a = float((x1 - x2)) / float((y1 - y2))
+		b = x1 - a * y1
+		
+		for yt in np.arange(min(y1, y2), max(y1, y2), dx):
+			xt = a*yt + b
+			for dxt in np.arange(-float(line_thickness)/2, float(line_thickness)/2):
+				for dyt in np.arange(-float(line_thickness)/2, float(line_thickness)/2):
+					x = int(min(max(xt + dxt, 0), width-1))
+					y = int(min(max(yt + dyt, 0), height-1))
+					img.putpixel((x, y), color)
+
+
+
+def draw_box(img, xmin, ymin, xmax, ymax, line_thickness=1, color=(255, 0, 0), dx=0.1):
+	draw_line(img, xmin, ymin, xmin, ymax, line_thickness=line_thickness, color=color, dx=dx)
+	draw_line(img, xmin, ymax, xmax, ymax, line_thickness=line_thickness, color=color, dx=dx)
+	draw_line(img, xmax, ymax, xmax, ymin, line_thickness=line_thickness, color=color, dx=dx)
+	draw_line(img, xmax, ymin, xmin, ymin, line_thickness=line_thickness, color=color, dx=dx)
+
+
+def draw_bb(img, bb, line_thickness=1, dx=0.1):
+	xmin, ymin, xmax, ymax = bb.get_coords()
+	score = bb.get_score()
+	
+	draw_box(img, xmin, ymin, xmax, ymax, line_thickness=line_thickness, color=score_to_color(score), dx=dx)
+
+
+def score_to_color(score, bad_color=(255, 0, 0), good_color=(0, 255, 0)):
+	output_color = []
+	for c in range(len(bad_color)):
+		output_color.append(int(bad_color[c] + score*(good_color[c]-bad_color[c])))
+	
+	return tuple(output_color)
+
 
 
 
@@ -340,6 +433,7 @@ for pageID in line_dict:
 
 
 optiboxs = [] # Contains the best bbxs at each step
+optiboxs.append({})
 
 # Get a group ?	
 for pageID in bbxs_dict:
@@ -512,7 +606,22 @@ print(total_sc)
 x = [0]
 y = [total_sc]
 
-
+if args.img_path:
+	img = Image.open(args.img_path)
+	
+	# Draw raw BB betas
+	for pageID in bbxs_dict:
+		for keyword in bbxs_dict[pageID]:
+			for bb in bbxs_dict[pageID][keyword]:
+				draw_bb(img, bb, line_thickness=1, dx=0.1)
+	
+	# Draw best BB b
+	for pageID in optiboxs[0]:
+		for keyword in optiboxs[0][pageID]:
+			for b in optiboxs[0][pageID][keyword]:
+				draw_bb(img, b, line_thickness=5, dx=0.1)	
+	
+	img.show()
 
 
 
@@ -528,19 +637,24 @@ def iterate(optiboxs, i, bbs_dict, scs):
 				beta_list = []
 				for beta in bbxs_dict[pageID][keyword]:
 					if is_intersection_bb(beta, b):
-						beta_list.append(beta)
+						overlap = (overlap_percent(beta, b) + overlap_percent(b, beta)) / 2
+						if overlap > args.min_overlap:
+							beta_list.append(beta)
 				
+				bi = None
 				if len(beta_list) > 0:
 					bi = merge_bb_groupi(beta_list, b)
+				else:
+					bi = b
 					
-					if len(optiboxs) <= i:
-						optiboxs.append({})
-					if pageID not in optiboxs[i]:
-						optiboxs[i][pageID] = {}
-					if keyword not in optiboxs[i][pageID]:
-						optiboxs[i][pageID][keyword] = []
-					
-					optiboxs[i][pageID][keyword].append(bi)
+				if len(optiboxs) <= i:
+					optiboxs.append({})
+				if pageID not in optiboxs[i]:
+					optiboxs[i][pageID] = {}
+				if keyword not in optiboxs[i][pageID]:
+					optiboxs[i][pageID][keyword] = []
+				
+				optiboxs[i][pageID][keyword].append(bi)
 	
 	total_sc = scores(optiboxs, i, bbxs_dict, scs)
 	print("Total score: " + str(total_sc))
@@ -551,9 +665,28 @@ def iterate(optiboxs, i, bbs_dict, scs):
 	# ~ iterate(optiboxs, i, bbxs_dict, scs)
 i = 1
 while i < args.iterations:
+	optiboxs.append({})
 	total_sc = iterate(optiboxs, i, bbxs_dict, scs)
 	x.append(i)
 	y.append(total_sc)
+	
+	if args.img_path and i == args.iterations-1:
+		img = Image.open(args.img_path)
+		
+		# Draw raw BB betas
+		for pageID in bbxs_dict:
+			for keyword in bbxs_dict[pageID]:
+				for bb in bbxs_dict[pageID][keyword]:
+					draw_bb(img, bb, line_thickness=1, dx=0.1)
+		
+		# Draw best BB b
+		for pageID in optiboxs[i]:
+			for keyword in optiboxs[i][pageID]:
+				for b in optiboxs[i][pageID][keyword]:
+					draw_bb(img, b, line_thickness=5, dx=0.1)	
+		
+		img.show()
+	
 	i += 1
 
 plt.plot(x, y)

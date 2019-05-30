@@ -1,4 +1,5 @@
 import argparse
+import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 	
@@ -7,6 +8,7 @@ if __name__ == '__main__':
 	parser.add_argument('merged_index', help='path to index file containing keywords, score and positioninng in the lines')
 	parser.add_argument('raw_index', help='path to index file containing keywords, score and positioninng in the lines')
 	parser.add_argument('--min-overlap', type=float, default=0.5, help='minimum percentage of overlaping for 2 bbxs to be considered as intersecting')
+	parser.add_argument('--bins', default=10, type=int, help='Number of delimiter')
 	
 	args = parser.parse_args()
 
@@ -83,9 +85,9 @@ with open(args.raw_index, 'r') as index_file:
 		
 		bb = BB(xmin, ymin, xmax, ymax, score)
 		
-		if pageID not in bbxs_dict_gt:
+		if pageID not in raw_bbs:
 			raw_bbs[pageID] = {}
-		if keyword not in bbxs_dict_gt[pageID]:
+		if keyword not in raw_bbs[pageID]:
 			raw_bbs[pageID][keyword] = []
 		
 		raw_bbs[pageID][keyword].append(bb)
@@ -94,13 +96,14 @@ with open(args.raw_index, 'r') as index_file:
 
 total = 0
 count = 0
+hist_data=[]
 
 
 
 with open(args.merged_index, 'r') as index_file:
 	for line in index_file:
 		line = line[:-1]
-		pageID, keyword, score_str, xmin_str, ymin_str, xmax_str, ymax_str = line.split(' ')
+		pageID, keyword, hit, score_str, xmin_str, ymin_str, xmax_str, ymax_str = line.split(' ')
 		
 		score = float(score_str)
 		xmin = int(xmin_str)
@@ -119,6 +122,11 @@ with open(args.merged_index, 'r') as index_file:
 			
 			total += c
 			count += 1
+			hist_data.append(c)
 
 print("Total: " + str(total))
 print("Count: " + str(count))
+
+plt.hist(hist_data, bins=args.bins, normed=True)
+plt.show()
+

@@ -2,6 +2,7 @@ import argparse
 from xmlPAGE import *
 import math
 from PIL import Image
+import scipy.special
 
 import matplotlib.pyplot as plt
 
@@ -585,11 +586,13 @@ def scores(optiboxs, i, bbs_dict, scores):
 		for keyword in optiboxs[i][pageID]:
 			for b in optiboxs[i][pageID][keyword]:
 				s = 0
-				for beta in bbxs_dict[pageID][keyword]:
+				for beta in bbs_dict[pageID][keyword]:
 					if is_intersection_bb(beta, b):
-						index_score = beta.get_score()
-						beta_score = overlap_percent(beta, b)
-						s += beta_score * index_score
+						overlap = overlap_percent(beta, b)
+						if overlap > args.min_overlap:
+							index_score = beta.get_score()
+							beta_score = overlap_percent(beta, b)
+							s += beta_score * index_score
 				
 				if len(scores) <= i:
 					scores.append({})
@@ -602,6 +605,54 @@ def scores(optiboxs, i, bbs_dict, scores):
 				total_score += s
 	
 	return total_score
+
+def sort_beta_list(beta_list):
+	n = len(beta_list)
+	for i in range(n-1,-1,-1):
+		for j in range(i):
+			if beta_list[j].get_score() < beta_list[j+1].get_score():
+				tmp_beta = beta_list[j]
+				beta_list[j] = beta_list[j+1]
+				beta_list[j+1] = tmp_beta
+
+def scores_v2(optiboxs, i, bbs_dict, scores):
+	total_score = 0
+	for pageID in optiboxs[i]:
+		for keyword in optiboxs[i][pageID]:
+			for b in optiboxs[i][pageID][keyword]:
+				if pageID in bbs_dict and keyword in bbs_dict[pageID]:
+					
+					# Construct list of betas overlapping with b
+					beta_list = []
+					for beta in bbs_dict[pageID][keyword]:
+						if is_intersection_bb(beta, b):
+							overlap = overlap_percent(beta, b)
+							if overlap > args.min_overlap:
+								beta_list.append(beta)
+					
+					# Sort the list
+					sort_beta_list(beta_list)
+					
+					# Compute relevance probability
+					s = 0.0
+					N = 21
+					p = 0.17
+					print("----------")
+					print(b)
+					for n in range(1, min(len(beta_list), N)+1):
+						pn = scipy.special.binom(N,n) * p ** n * (1 - p) ** (N - n)
+						prod = 1
+						
+						# Keep a partition with the n best betas
+						for beta in beta_list[:n]:
+							prod *= overlap_percent(beta, b) * beta.get_score()
+						
+						s += prod*pn
+						print("n: " + str(n))
+						# ~ print("pn: " + str(pn))
+						# ~ print("prod: " + str(prod))
+						# ~ print("pn*prod: " + str(prod*pn))
+					print("s: " + str(s))
 
 scs = []
 total_sc = scores(optiboxs, 0, bbxs_dict, scs)
@@ -642,7 +693,7 @@ def iterate(optiboxs, i, bbs_dict, scs):
 				beta_list = []
 				for beta in bbxs_dict[pageID][keyword]:
 					if is_intersection_bb(beta, b):
-						overlap = (overlap_percent(beta, b) + overlap_percent(b, beta)) / 2
+						overlap = overlap_percent(beta, b)
 						if overlap > args.min_overlap:
 							beta_list.append(beta)
 				
@@ -693,6 +744,8 @@ while i < args.iterations:
 		img.show()
 	
 	i += 1
+
+scores_v2(optiboxs, 0, bbxs_dict, scs)
 
 plt.plot(x, y)
 plt.title("Evolution of best BB's relevance")

@@ -1,6 +1,7 @@
 import argparse
 from xmlPAGE import *
 import math
+import scipy.special
 
 if __name__ == '__main__':
 	
@@ -82,6 +83,24 @@ def is_intersection_bb(bb1, bb2):
 	
 	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
 
+# ~ def overlap_percent(bb1, bb2):
+	# ~ xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
+	# ~ xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
+	
+	# ~ xmin = max(xmin1, xmin2)
+	# ~ ymin = max(ymin1, ymin2)
+	# ~ xmax = min(xmax1, xmax2)
+	# ~ ymax = min(ymax1, ymax2)
+	
+	# ~ base_area = (xmax1 - xmin1) * (ymax1 - ymin1)
+	# ~ area = (xmax - xmin) * (ymax - ymin)
+	
+	# ~ percentage = 0.0
+	# ~ if base_area > 0.0:
+		# ~ percentage = float(area)/float(base_area)
+	
+	# ~ return percentage
+
 def overlap_percent(bb1, bb2):
 	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
 	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
@@ -91,12 +110,15 @@ def overlap_percent(bb1, bb2):
 	xmax = min(xmax1, xmax2)
 	ymax = min(ymax1, ymax2)
 	
-	base_area = (xmax1 - xmin1) * (ymax1 - ymin1)
+	base_area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
+	base_area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
 	area = (xmax - xmin) * (ymax - ymin)
 	
+	union_area = (float(base_area1)+float(base_area2)-float(area))
+	
 	percentage = 0.0
-	if base_area > 0.0:
-		percentage = float(area)/float(base_area)
+	if union_area > 0.0:
+		percentage = float(area)/union_area
 	
 	return percentage
 
@@ -373,7 +395,35 @@ def merge_bb_group_total_qty(bb_list, line_dict, keyword, total):
 	
 	return B, total_score
 	
+def sort_beta_list(beta_list):
+	n = len(beta_list)
+	for i in range(n-1,-1,-1):
+		for j in range(i):
+			if beta_list[j].get_score() < beta_list[j+1].get_score():
+				tmp_beta = beta_list[j]
+				beta_list[j] = beta_list[j+1]
+				beta_list[j+1] = tmp_beta
+
+def scores_v2(b, beta_list):
 	
+	# Sort the list
+	sort_beta_list(beta_list)
+	
+	# Compute relevance probability
+	s = 0.0
+	N = 21
+	p = 0.17
+	for n in range(1, min(len(beta_list), N)+1):
+		pn = scipy.special.binom(N,n) * p ** n * (1 - p) ** (N - n)
+		prod = 1
+		
+		# Keep a partition with the n best betas
+		for beta in beta_list[:n]:
+			prod *= overlap_percent(beta, b) * beta.get_score()
+		
+		s += prod*pn
+	
+	return s
 	
 	
 	
@@ -559,7 +609,8 @@ for pageID in bbxs_dict:
 				# ~ for bb2 in bb_list:
 				for i2 in range(len(bb_list)):
 					bb2 = bb_list[i2]
-					overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
+					# ~ overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
+					overlap = overlap_percent(bb1, bb2)
 					if is_intersection_bb(bb1, bb2) and overlap > args.min_overlap and not bb_equal(bb1, bb2):
 						is_bb_alone = False
 						
@@ -581,11 +632,13 @@ for pageID in bbxs_dict:
 								
 								# Count the number of intersections the couple of bbxs have with the group
 								if is_intersection_bb(bb1, bb):
-									overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									overlap = overlap_percent(bb1, bb)
 									if overlap >= args.min_overlap:
 										nbr_intersection1 += 1
 								if is_intersection_bb(bb2, bb):
-									overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
+									overlap = overlap_percent(bb1, bb)
 									if overlap >= args.min_overlap:
 										nbr_intersection2 += 1
 							
@@ -603,7 +656,8 @@ for pageID in bbxs_dict:
 									nbr_intersection = -1
 									for bb_tmp2 in curr_grp_to_test:
 										if is_intersection_bb(bb_tmp1, bb_tmp2):
-											overlap = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
+											# ~ overlap = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
+											overlap = overlap_percent(bb_tmp1, bb_tmp2)
 											if overlap >= args.min_overlap:
 												nbr_intersection += 1
 									
@@ -644,12 +698,12 @@ for pageID in bbxs_dict:
 				nbr_bb = len(bbxs_grp)
 				total += nbr_bb
 				n += 1
-				if nbr_bb > max_bbs:
-					print("-------------------------------------------")
-					print("pageID: " + pageID)
-					print("keyword: " + keyword)
-					print("N: " + str(nbr_bb))
-					max_bbs = nbr_bb
+				# ~ if nbr_bb > max_bbs:
+					# ~ print("-------------------------------------------")
+					# ~ print("pageID: " + pageID)
+					# ~ print("keyword: " + keyword)
+					# ~ print("N: " + str(nbr_bb))
+					# ~ max_bbs = nbr_bb
 				
 				new_bb = None
 				# Default, set the score equal to the maximum of overlapping BBs
@@ -687,6 +741,19 @@ for pageID in bbxs_dict:
 			# pageID keyword score xmin ymin xmax ymax
 			xmin, ymin, xmax, ymax = bb.get_coords()
 			score = bb.get_score()
+			
+			if pageID in bbxs_dict and keyword in bbxs_dict[pageID]:
+					
+				# Construct list of betas overlapping with b
+				beta_list = []
+				for beta in bbxs_dict[pageID][keyword]:
+					if is_intersection_bb(beta, bb):
+						overlap = overlap_percent(beta, bb)
+						if overlap > args.min_overlap:
+							beta_list.append(beta)
+			
+				score = scores_v2(bb, beta_list)
+			
 			line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
 			output.write(line_to_write)
 

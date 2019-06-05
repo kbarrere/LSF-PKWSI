@@ -737,22 +737,22 @@ for pageID in bbxs_dict:
 		
 		
 		# Write results
-		for bb in bb_list:
+		for b in bb_list:
 			# pageID keyword score xmin ymin xmax ymax
-			xmin, ymin, xmax, ymax = bb.get_coords()
-			score = bb.get_score()
+			xmin, ymin, xmax, ymax = b.get_coords()
+			score = b.get_score()
 			
-			if pageID in bbxs_dict and keyword in bbxs_dict[pageID]:
+			# ~ if pageID in bbxs_dict and keyword in bbxs_dict[pageID]:
 					
-				# Construct list of betas overlapping with b
-				beta_list = []
-				for beta in bbxs_dict[pageID][keyword]:
-					if is_intersection_bb(beta, bb):
-						overlap = overlap_percent(beta, bb)
-						if overlap > args.min_overlap:
-							beta_list.append(beta)
+				# ~ # Construct list of betas overlapping with b
+				# ~ beta_list = []
+				# ~ for beta in bbxs_dict[pageID][keyword]:
+					# ~ if is_intersection_bb(beta, b):
+						# ~ overlap = overlap_percent(beta, b)
+						# ~ if overlap > args.min_overlap:
+							# ~ beta_list.append(beta)
 			
-				score = scores_v2(bb, beta_list)
+				# ~ score = scores_v2(b, beta_list)
 			
 			line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
 			output.write(line_to_write)

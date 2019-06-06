@@ -16,7 +16,7 @@ if __name__ == '__main__':
 	parser.add_argument('--overlap-score', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores')
 	parser.add_argument('--overlap-score-union', action='store_true', help='Multiply the score based on the percentage of area overlapped by other bbxs multiplied by their respectives scores, taking into account the union of overlaping bbxs')
 	parser.add_argument('--gaussian-shape', action='store_true', help='Multiply the score based on a gaussian function depending on the number of frames of the bbx')
-	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='frames', help='Format of the index file.')
+	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='pixels', help='Format of the index file.')
 	
 	args = parser.parse_args()
 

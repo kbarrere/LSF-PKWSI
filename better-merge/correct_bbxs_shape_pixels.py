@@ -11,7 +11,7 @@ if __name__ == '__main__':
 	parser.add_argument('--mean', type=float, default=29.7175, help='mean of the gaussian of number of frames per character')
 	parser.add_argument('--std', type=float, default=13.7702, help='std of the gaussian of number of frames per character')
 	parser.add_argument('--threshold', type=float, default=0.05, help='If the gaussian score is below that value, correct it')
-	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='frames', help='Format of the index file.')
+	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='pixels', help='Format of the index file.')
 	
 	args = parser.parse_args()
 

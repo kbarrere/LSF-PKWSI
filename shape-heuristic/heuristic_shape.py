@@ -1,5 +1,5 @@
 import argparse
-import matplotlib.pyplot as plt
+import numpy as np
 
 if __name__ == '__main__':
 	
@@ -23,7 +23,7 @@ output_index = open(args.output_index, 'w')
 for line in input_index:
 	line = line[:-1]
 	
-	pageID, keyword, hit, index_score_str, xmin_str, ymin_str, xmax_str, ymax_str = line.split(' ')
+	pageID, keyword, index_score_str, xmin_str, ymin_str, xmax_str, ymax_str = line.split(' ')
 	index_score = float(index_score_str)
 	xmin = int(xmin_str)
 	ymin = int(ymin_str)

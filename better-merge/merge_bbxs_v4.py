@@ -2,6 +2,7 @@ import argparse
 from xmlPAGE import *
 import math
 import scipy.special
+import numpy as np
 
 if __name__ == '__main__':
 	
@@ -20,7 +21,7 @@ if __name__ == '__main__':
 	parser.add_argument('--complex', action='store_true', help='Complex method to merge bounding boxes')
 	parser.add_argument('--eps', type=float, default =-1.0, help='Estimate the missing probability by this value')
 	parser.add_argument('--total', type=float, default =-1.0, help='Estimate the missing probability by this value')
-	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='frames', help='Format of the index file.')
+	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='pixels', help='Format of the index file.')
 	
 	
 	args = parser.parse_args()
@@ -122,6 +123,16 @@ def overlap_percent(bb1, bb2):
 	
 	return percentage
 
+def total_overlap_percent(bb, bb_list, debug=False):
+	c = 0.
+	for bb8 in bb_list:
+		if is_intersection_bb(bb, bb8):
+			if debug:
+				print("Overlap with " + str(bb8))
+				print("Value: " + str(overlap_percent(bb, bb8)))
+			c += overlap_percent(bb, bb8)
+	return c
+
 def merge_bb_group(bb_list):
 	total_mass = 0.0
 	total_x = 0.0
@@ -133,6 +144,63 @@ def merge_bb_group(bb_list):
 	for bb in bb_list:
 		xmin, ymin, xmax, ymax = bb.get_coords()
 		score = bb.get_score()
+		
+		total_mass += score
+		total_x += score * (xmax + xmin) / 2
+		total_y += score * (ymax + ymin) / 2
+		total_w += score*(xmax - xmin)
+		total_h += score*(ymax - ymin)
+		
+		max_score = max(max_score, score)
+	
+	# Temporary solution to avoid division by 0
+	if total_mass < 0.000001:
+		return bb_list[0]
+	
+	center_x = total_x / total_mass
+	center_y = total_y / total_mass
+	center_w = total_w / total_mass
+	center_h = total_h / total_mass
+	
+	xmin = center_x - center_w / 2
+	xmax = center_x + center_w / 2
+	ymin = center_y - center_h / 2
+	ymax = center_y + center_h / 2
+	
+	if math.isnan(xmin):
+		print("xmin:"+str(xmin))
+		print("ymin:"+str(ymin))
+		print("xmax:"+str(xmax))
+		print("ymax"+str(ymax))
+		print("total mass:"+str(total_mass))
+		print("total x:"+str(total_x))
+		print("total y:"+str(total_y))
+		print("center_x:"+str(center_x))
+		print("center_y:"+str(center_y))
+		print("center_w:"+str(center_w))
+		print("center_h:"+str(center_h))
+	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
+	
+	return bb
+	
+def merge_bb_group_v2(bb_list, keyword):
+	total_mass = 0.0
+	total_x = 0.0
+	total_y = 0.0
+	total_w = 0.0
+	total_h = 0.0
+	max_score = 0.0
+	
+	for bb in bb_list:
+		xmin, ymin, xmax, ymax = bb.get_coords()
+		
+		overlap100 = total_overlap_percent(bb, bb_list) - 1.0
+		pbop = sigmoid(overlap100, 8, 2.75)
+		pshape = proba_shape(bb, keyword, mean=0.44, std=0.45)
+		
+		proba_beta = pbop * pshape
+		
+		score = bb.get_score() * proba_beta
 		
 		total_mass += score
 		total_x += score * (xmax + xmin) / 2
@@ -404,22 +472,52 @@ def sort_beta_list(beta_list):
 				beta_list[j] = beta_list[j+1]
 				beta_list[j+1] = tmp_beta
 
-def scores_v2(b, beta_list):
+
+
+def sigmoid(x, a=1.0, b=0.0):
+	return 1 / (1 + math.exp(-a*x+b))
+
+def gaussian(x, mean, std):
+	return np.exp(- ((x - mean) ** 2) / (2 * std ** 2))
+
+def proba_shape(beta, keyword, mean=0.42, std=0.18):
+	xmin, ymin, xmax, ymax = beta.get_coords()
+	
+	width = xmax - xmin + 1
+	height = ymax - ymin + 1
+	characters = len(keyword)
+	
+	width = float(width)
+	height = float(height)
+	characters = float(characters)
+	
+	char_ratio = width / (height * characters)
+	
+	return gaussian(char_ratio, mean, std)
+
+def scores_v2(b, beta_list, keyword):
 	
 	# Sort the list
 	sort_beta_list(beta_list)
 	
+	# Experimental probability
+	#        p(1)    p(2)    p(3)    p(4)    p(5)    p(6)    p(7)    p(8)
+	pnexp = [0.1069, 0.2375, 0.2694, 0.0862, 0.1226, 0.1221, 0.0516, 0.0036]
+	
 	# Compute relevance probability
 	s = 0.0
-	N = 21
-	p = 0.17
+	# ~ N = 21
+	N = 8
+	p = 0.7
 	for n in range(1, min(len(beta_list), N)+1):
 		pn = scipy.special.binom(N,n) * p ** n * (1 - p) ** (N - n)
+		# ~ pn = pnexp[n-1] if n -1 < len(pnexp) else 0
 		prod = 1
 		
 		# Keep a partition with the n best betas
 		for beta in beta_list[:n]:
-			prod *= overlap_percent(beta, b) * beta.get_score()
+			proba_beta = overlap_percent(beta, b) * proba_shape(beta, keyword, mean=0.44, std=0.45)
+			prod *= proba_beta * beta.get_score()
 		
 		s += prod*pn
 	
@@ -708,7 +806,8 @@ for pageID in bbxs_dict:
 				new_bb = None
 				# Default, set the score equal to the maximum of overlapping BBs
 				if not args.eps != -1 and not args.complex and not args.total != -1:
-					new_bb = merge_bb_group(bbxs_grp)
+					# ~ new_bb = merge_bb_group(bbxs_grp)
+					new_bb = merge_bb_group_v2(bbxs_grp, keyword)
 				# Simple estimation of the missing probabilty by providing a constant value
 				elif args.eps != -1:
 					new_bb, total_score = merge_bb_group_missqty(bbxs_grp, line_dict[pageID], keyword, args.eps)
@@ -742,17 +841,17 @@ for pageID in bbxs_dict:
 			xmin, ymin, xmax, ymax = b.get_coords()
 			score = b.get_score()
 			
-			# ~ if pageID in bbxs_dict and keyword in bbxs_dict[pageID]:
+			if pageID in bbxs_dict and keyword in bbxs_dict[pageID]:
 					
-				# ~ # Construct list of betas overlapping with b
-				# ~ beta_list = []
-				# ~ for beta in bbxs_dict[pageID][keyword]:
-					# ~ if is_intersection_bb(beta, b):
-						# ~ overlap = overlap_percent(beta, b)
-						# ~ if overlap > args.min_overlap:
-							# ~ beta_list.append(beta)
+				# Construct list of betas overlapping with b
+				beta_list = []
+				for beta in bbxs_dict[pageID][keyword]:
+					if is_intersection_bb(beta, b):
+						overlap = overlap_percent(beta, b)
+						if overlap > args.min_overlap:
+							beta_list.append(beta)
 			
-				# ~ score = scores_v2(b, beta_list)
+				score = scores_v2(b, beta_list, keyword)
 			
 			line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
 			output.write(line_to_write)

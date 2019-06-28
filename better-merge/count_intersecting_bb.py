@@ -127,6 +127,7 @@ with open(args.merged_index, 'r') as index_file:
 print("Total: " + str(total))
 print("Count: " + str(count))
 
-plt.hist(hist_data, bins=args.bins, normed=True)
+array, _, _ = plt.hist(hist_data, bins=args.bins, normed=False)
+print(array)
 plt.show()
 

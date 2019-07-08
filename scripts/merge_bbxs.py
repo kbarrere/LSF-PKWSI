@@ -1,5 +1,6 @@
 import argparse
 from xmlPAGE import *
+from bounding_boxes import *
 import math
 import scipy.special
 import numpy as np
@@ -17,10 +18,6 @@ if __name__ == '__main__':
 	parser.add_argument('--verbose', action='store_true', help='print the current page, keyword and step')
 	parser.add_argument('--show-progress', action='store_true', help='print the current progress for each page')
 	parser.add_argument('--minimum-score', type=float, default=0.00001, help='Only take into account pseudo-word with a score superior to that value')
-	parser.add_argument('--normalize', default='false', help='whether to normalize or not')
-	parser.add_argument('--complex', action='store_true', help='Complex method to merge bounding boxes')
-	parser.add_argument('--eps', type=float, default =-1.0, help='Estimate the missing probability by this value')
-	parser.add_argument('--total', type=float, default =-1.0, help='Estimate the missing probability by this value')
 	parser.add_argument('--index-format', choices=['frames', 'pixels'], default ='pixels', help='Format of the index file.')
 	
 	
@@ -33,157 +30,10 @@ def string_to_boolean(s):
 		return False
 	else:
 		raise argparse.ArgumentTypeError('Boolean value expected.')
-		
 
-class BB:
-	def __init__(self, xmin, ymin, xmax, ymax, score):
-		self.xmin = xmin
-		self.ymin = ymin
-		self.xmax = xmax
-		self.ymax = ymax
-		self.score = score
-	
-	def get_coords(self):
-		return self.xmin, self.ymin, self.xmax, self.ymax
-	
-	def get_score(self):
-		return self.score
-	
-	def set_score(self, score):
-		self.score = score
-	
-	def __repr__(self):
-		return "BB("+self.__str__()+")"
-	
-	def __str__(self):
-		return "xmin="+str(self.xmin)+" ymin="+str(self.ymin)+" xmax="+str(self.xmax)+" ymax="+str(self.ymax)+" score="+str(self.score)
 
-def bb_equal(bb1, bb2):
-	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
-	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
 	
-	return (xmin1 == xmin2 and ymin1 == ymin2 and xmax1 == xmax2 and ymax1 == ymax2)
-
-def bb_equal_strict(bb1, bb2):
-	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
-	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
-	score1 = bb1.get_score()
-	score2 = bb2.get_score()
-	
-	return (xmin1 == xmin2 and ymin1 == ymin2 and xmax1 == xmax2 and ymax1 == ymax2 and score1 == score2)
-
-def is_in_range(xmin, xmax, x):
-	return (xmin <= x and x <= xmax)
-
-def is_intersection_segment(xmin1, xmax1, xmin2, xmax2):
-	return (is_in_range(xmin1, xmax1, xmin2) or is_in_range(xmin1, xmax1, xmax2) or is_in_range(xmin2, xmax2, xmin1) or is_in_range(xmin2, xmax2, xmax1))
-
-def is_intersection_bb(bb1, bb2):
-	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
-	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
-	
-	return (is_intersection_segment(xmin1, xmax1, xmin2, xmax2) and is_intersection_segment(ymin1, ymax1, ymin2, ymax2))
-
-# ~ def overlap_percent(bb1, bb2):
-	# ~ xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
-	# ~ xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
-	
-	# ~ xmin = max(xmin1, xmin2)
-	# ~ ymin = max(ymin1, ymin2)
-	# ~ xmax = min(xmax1, xmax2)
-	# ~ ymax = min(ymax1, ymax2)
-	
-	# ~ base_area = (xmax1 - xmin1) * (ymax1 - ymin1)
-	# ~ area = (xmax - xmin) * (ymax - ymin)
-	
-	# ~ percentage = 0.0
-	# ~ if base_area > 0.0:
-		# ~ percentage = float(area)/float(base_area)
-	
-	# ~ return percentage
-
-def overlap_percent(bb1, bb2):
-	xmin1, ymin1, xmax1, ymax1 = bb1.get_coords()
-	xmin2, ymin2, xmax2, ymax2 = bb2.get_coords()
-	
-	xmin = max(xmin1, xmin2)
-	ymin = max(ymin1, ymin2)
-	xmax = min(xmax1, xmax2)
-	ymax = min(ymax1, ymax2)
-	
-	base_area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
-	base_area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
-	area = (xmax - xmin) * (ymax - ymin)
-	
-	union_area = (float(base_area1)+float(base_area2)-float(area))
-	
-	percentage = 0.0
-	if union_area > 0.0:
-		percentage = float(area)/union_area
-	
-	return percentage
-
-def total_overlap_percent(bb, bb_list, debug=False):
-	c = 0.
-	for bb8 in bb_list:
-		if is_intersection_bb(bb, bb8):
-			if debug:
-				print("Overlap with " + str(bb8))
-				print("Value: " + str(overlap_percent(bb, bb8)))
-			c += overlap_percent(bb, bb8)
-	return c
-
-def merge_bb_group(bb_list):
-	total_mass = 0.0
-	total_x = 0.0
-	total_y = 0.0
-	total_w = 0.0
-	total_h = 0.0
-	max_score = 0.0
-	
-	for bb in bb_list:
-		xmin, ymin, xmax, ymax = bb.get_coords()
-		score = bb.get_score()
-		
-		total_mass += score
-		total_x += score * (xmax + xmin) / 2
-		total_y += score * (ymax + ymin) / 2
-		total_w += score*(xmax - xmin)
-		total_h += score*(ymax - ymin)
-		
-		max_score = max(max_score, score)
-	
-	# Temporary solution to avoid division by 0
-	if total_mass < 0.000001:
-		return bb_list[0]
-	
-	center_x = total_x / total_mass
-	center_y = total_y / total_mass
-	center_w = total_w / total_mass
-	center_h = total_h / total_mass
-	
-	xmin = center_x - center_w / 2
-	xmax = center_x + center_w / 2
-	ymin = center_y - center_h / 2
-	ymax = center_y + center_h / 2
-	
-	if math.isnan(xmin):
-		print("xmin:"+str(xmin))
-		print("ymin:"+str(ymin))
-		print("xmax:"+str(xmax))
-		print("ymax"+str(ymax))
-		print("total mass:"+str(total_mass))
-		print("total x:"+str(total_x))
-		print("total y:"+str(total_y))
-		print("center_x:"+str(center_x))
-		print("center_y:"+str(center_y))
-		print("center_w:"+str(center_w))
-		print("center_h:"+str(center_h))
-	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
-	
-	return bb
-	
-def merge_bb_group_v2(bb_list, keyword):
+def merge_bb_group(bb_list, keyword):
 	total_mass = 0.0
 	total_x = 0.0
 	total_y = 0.0
@@ -194,9 +44,14 @@ def merge_bb_group_v2(bb_list, keyword):
 	for bb in bb_list:
 		xmin, ymin, xmax, ymax = bb.get_coords()
 		
-		overlap100 = total_overlap_percent(bb, bb_list) - 1.0
+		# Compute the probability of a BB based on:
+		overlap100 = total_overlap_percent(bb, bb_list) - 1.0 # Overlapping with other BBs
 		pbop = sigmoid(overlap100, 8, 2.75)
-		pshape = proba_shape(bb, keyword, mean=0.44, std=0.45)
+		
+		mean = 0.44 # TUNE
+		std = 0.45 # TUNE
+		
+		pshape = proba_shape(bb, keyword, mean=mean, std=std) # The shape
 		
 		proba_beta = pbop * pshape
 		
@@ -214,151 +69,21 @@ def merge_bb_group_v2(bb_list, keyword):
 	if total_mass < 0.000001:
 		return bb_list[0]
 	
+	# Weigthed average for the consolidated BB
 	center_x = total_x / total_mass
 	center_y = total_y / total_mass
 	center_w = total_w / total_mass
 	center_h = total_h / total_mass
-	
 	xmin = center_x - center_w / 2
 	xmax = center_x + center_w / 2
 	ymin = center_y - center_h / 2
 	ymax = center_y + center_h / 2
 	
-	if math.isnan(xmin):
-		print("xmin:"+str(xmin))
-		print("ymin:"+str(ymin))
-		print("xmax:"+str(xmax))
-		print("ymax"+str(ymax))
-		print("total mass:"+str(total_mass))
-		print("total x:"+str(total_x))
-		print("total y:"+str(total_y))
-		print("center_x:"+str(center_x))
-		print("center_y:"+str(center_y))
-		print("center_w:"+str(center_w))
-		print("center_h:"+str(center_h))
 	bb = BB(int(xmin), int(ymin), int(xmax), int(ymax), max_score)
 	
 	return bb
 
-def gaussian(x, mean, std):
-	return np.exp(- ((x - mean) ** 2) / (2 * std ** 2))
 
-def contribution_score(b, frame_number, B, keyword, mean=3.128, std=1.373):
-	if is_intersection_bb(b, B):
-		frame_per_character = float(frame_number) / float(len(keyword))
-		return overlap_percent(b, B) * overlap_percent(B, b) * gaussian(frame_per_character, mean, std)
-	return 0
-
-def merged_bb_score(bb_list, line_dict, keyword):
-	B = merge_bb_group(bb_list)
-	xmin_B, ymin_B, xmax_B, ymax_B = B.get_coords()
-	width_B = xmax_B - xmin_B
-	x_start_min = xmin_B - width_B
-	x_end_max = xmax_B + width_B
-	
-	total_score = 0
-	score = 0
-	
-	for regionID in line_dict:
-		for lineID in line_dict[regionID]:
-			line = line_dict[regionID][lineID]
-			xmin_line = line[0]
-			ymin_line = line[1]
-			xmax_line = line[2]
-			ymax_line = line[3]
-			total_frame = line[4]
-			
-			line_width = xmax_line - xmin_line + 1
-		
-			# Only keep the lines that cross the BB B
-			if is_intersection_segment(ymin_B, ymax_B, ymin_line, ymax_line):
-				
-				for start_frame in range(total_frame):
-					x_start = int(float(start_frame)/float(total_frame)*line_width)
-					
-					if x_start_min <= x_start and x_start <= x_end_max:
-						for end_frame in range(start_frame + 1, total_frame):
-							x_end = int(float(end_frame)/float(total_frame)*line_width)
-							
-							if x_end <= x_end_max:
-								bb_tmp = BB(x_start, ymin_line, x_end, ymax_line, 0)
-								
-								contrib_score = contribution_score(bb_tmp, end_frame - start_frame + 1, B, keyword)
-								
-								total_score += contrib_score
-								
-								# If this BB exist add it to the score
-								for bb in bb_list:
-									if bb_equal(bb, bb_tmp):
-										score_bb = bb.get_score()
-										score += contrib_score * score_bb
-	
-	new_score = bb_list[0].get_score()
-	if total_score > 0:
-		new_score = score / total_score
-	else:
-		print("Warning: Total Score = 0")
-	print(new_score)
-	B.set_score(new_score)
-	
-	return B
-
-def merged_bb_score_fast(bb_list, line_dict, keyword):
-	B = merge_bb_group(bb_list)
-	xmin_B, ymin_B, xmax_B, ymax_B = B.get_coords()
-	width_B = xmax_B - xmin_B
-	x_start_min = xmin_B - width_B
-	x_end_max = xmax_B + width_B
-	
-	total_score = 0
-	score = 0
-	
-	# debug purpose
-	nbr_lines = 0
-	nbr_frames = 0
-	
-	for regionID in line_dict:
-		for lineID in line_dict[regionID]:
-			
-			line = line_dict[regionID][lineID]
-			ymin_line = line[1]
-			ymax_line = line[3]
-		
-			# Only keep the lines that cross the BB B
-			if is_intersection_segment(ymin_B, ymax_B, ymin_line, ymax_line):
-				
-				# Compute an approximation of the total score
-				xmin_line = line[0]
-				xmax_line = line[2]
-				
-				bb_line = BB(xmin_line, ymin_line, xmax_line, ymax_line, 0)
-				ovlBl = overlap_percent(B, bb_line)
-				
-				gaussian_score = 0
-				frames = x_end_max - x_start_min
-				for k in range(frames):
-					gaussian_score += (frames-k) * gaussian(k+1, 3.128, 1.373)
-			
-				total_score += ovlBl * gaussian_score
-					
-				# Compute the score of the BBxs.
-				for bb in bb_list:
-					xmin, ymin, xmax, ymax = bb.get_coords()
-					
-					# Test if the bb belong to that line
-					if ymin == ymin_line and ymax == ymax_line:
-						total_frame = line[4]
-						line_width = xmax_line - xmin_line + 1
-						
-						frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
-						score += contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373) * bb.get_score()
-	
-	new_score = bb_list[0].get_score()
-	if total_score > 0:
-		new_score = score / total_score
-	B.set_score(new_score)
-	
-	return B
 
 def merge_lists(list1, list2):
 	output_list = []
@@ -376,92 +101,6 @@ def append_lists(list1, list2):
 	for el2 in list2:
 		if el2 not in list1:
 			list1.append(el2)
-
-max_total = 0.0
-		
-def merge_bb_group_missqty(bb_list, line_dict, keyword, eps):
-	B = merge_bb_group(bb_list)
-	
-	n = len(bb_list)
-	
-	scores = [0]*n
-	
-	for i in range(n):
-	# ~ for bb in bb_list:
-		bb = bb_list[i]
-		xmin, ymin, xmax, ymax = bb.get_coords()
-				
-		for regionID in line_dict:
-			for lineID in line_dict[regionID]:
-				line = line_dict[regionID][lineID]
-				ymin_line = line[1]
-				ymax_line = line[3]
-				
-				# Test if the bb belong to that line
-				if ymin == ymin_line and ymax == ymax_line:
-					xmin_line = line[0]
-					xmax_line = line[2]
-					total_frame = line[4]
-					line_width = xmax_line - xmin_line + 1
-					
-					frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
-					score = contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
-					
-					# ~ scores.append(score)
-					scores[i] = score
-	
-	total_score = eps
-	for score in scores:
-		total_score += score
-	
-	new_score = 0.0
-	if total_score > 0:
-		for i in range(len(bb_list)):
-			new_score += scores[i] * bb_list[i].get_score() / total_score
-	
-	B.set_score(new_score)
-	
-	return B, total_score
-
-def merge_bb_group_total_qty(bb_list, line_dict, keyword, total):
-	B = merge_bb_group(bb_list)
-	
-	n = len(bb_list)
-	
-	scores = [0]*n
-	
-	for i in range(n):
-	# ~ for bb in bb_list:
-		bb = bb_list[i]
-		xmin, ymin, xmax, ymax = bb.get_coords()
-				
-		for regionID in line_dict:
-			for lineID in line_dict[regionID]:
-				line = line_dict[regionID][lineID]
-				ymin_line = line[1]
-				ymax_line = line[3]
-				
-				# Test if the bb belong to that line
-				if ymin == ymin_line and ymax == ymax_line:
-					xmin_line = line[0]
-					xmax_line = line[2]
-					total_frame = line[4]
-					line_width = xmax_line - xmin_line + 1
-					
-					frame_number = int(float(xmax-xmin+1)*float(total_frame)/float(line_width))
-					score = contribution_score(bb, frame_number, B, keyword, mean=3.128, std=1.373)
-					
-					# ~ scores.append(score)
-					scores[i] = score
-	
-	new_score = 0
-	if total > 0:
-		for i in range(len(bb_list)):
-			new_score += scores[i] * bb_list[i].get_score() / total
-	
-	B.set_score(new_score)
-	
-	return B, total_score
 	
 def sort_beta_list(beta_list):
 	n = len(beta_list)
@@ -495,7 +134,9 @@ def proba_shape(beta, keyword, mean=0.42, std=0.18):
 	
 	return gaussian(char_ratio, mean, std)
 
-def scores_v2(b, beta_list, keyword):
+
+# Give a score to each Consolidated BB
+def scores(b, beta_list, keyword):
 	
 	# Sort the list
 	sort_beta_list(beta_list)
@@ -506,9 +147,10 @@ def scores_v2(b, beta_list, keyword):
 	
 	# Compute relevance probability
 	s = 0.0
-	# ~ N = 21
-	N = 8
-	p = 0.7
+	
+	N = 8 # TUNE
+	p = 0.7 # TUNE
+	
 	for n in range(1, min(len(beta_list), N)+1):
 		pn = scipy.special.binom(N,n) * p ** n * (1 - p) ** (N - n)
 		# ~ pn = pnexp[n-1] if n -1 < len(pnexp) else 0
@@ -516,7 +158,11 @@ def scores_v2(b, beta_list, keyword):
 		
 		# Keep a partition with the n best betas
 		for beta in beta_list[:n]:
-			proba_beta = overlap_percent(beta, b) * proba_shape(beta, keyword, mean=0.44, std=0.45)
+			
+			mean = 0.44 # TUNE
+			std = 0.45 # TUNE
+			
+			proba_beta = overlap_percent(beta, b) * proba_shape(beta, keyword, mean=mean, std=std)
 			prod *= proba_beta * beta.get_score()
 		
 		s += prod*pn
@@ -527,10 +173,7 @@ def scores_v2(b, beta_list, keyword):
 	
 	
 	
-bbxs_dict = {}
-
-
-
+bbxs_dict = {} # Store the BBs
 line_dict = {} # Stocks line and their position info, their number of frames, ...
 
 # Reading the index file
@@ -606,7 +249,6 @@ if args.pages_path:
 				line_xmin, line_ymin = line_coords[0]
 				line_xmax, line_ymax = line_coords[2]
 				line_width = line_xmax - line_xmin + 1
-				# ~ line_height = line_ymax - line_ymin
 				
 				# Complete line dict
 				regionID = lineID.split('-')[0].split('_')[-1]
@@ -662,13 +304,9 @@ for pageID in line_dict:
 			if total_frame == -1:
 				line_dict[pageID][regionID][lineID][4] = mean_frame_count
 
+
+
 output = open(args.output_index, 'w')
-
-
-
-max_bbs = 0
-total = 0
-n = 0
 
 for pageID in bbxs_dict:
 	c = 0
@@ -704,17 +342,15 @@ for pageID in bbxs_dict:
 				
 				# Search for a bb that has an intersection with current bb
 				is_bb_alone = True
-				# ~ for bb2 in bb_list:
 				for i2 in range(len(bb_list)):
 					bb2 = bb_list[i2]
-					# ~ overlap = (overlap_percent(bb1, bb2) + overlap_percent(bb2, bb1) ) / 2
 					overlap = overlap_percent(bb1, bb2)
 					if is_intersection_bb(bb1, bb2) and overlap > args.min_overlap and not bb_equal(bb1, bb2):
 						is_bb_alone = False
 						
 						# Try to insert that couple of bounding box in every existing group of bounding box
 						is_couple_new = True
-						# ~ for bbxs_grp in bbxs_grps:
+						
 						for ibbxs_grp in range(len(bbxs_grps)):
 							bbxs_grp = bbxs_grps[ibbxs_grp]
 							original_bbxs_grp = original_bbxs_grps[ibbxs_grp]
@@ -730,12 +366,10 @@ for pageID in bbxs_dict:
 								
 								# Count the number of intersections the couple of bbxs have with the group
 								if is_intersection_bb(bb1, bb):
-									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
 									overlap = overlap_percent(bb1, bb)
 									if overlap >= args.min_overlap:
 										nbr_intersection1 += 1
 								if is_intersection_bb(bb2, bb):
-									# ~ overlap = (overlap_percent(bb1, bb) + overlap_percent(bb, bb1) ) / 2
 									overlap = overlap_percent(bb1, bb)
 									if overlap >= args.min_overlap:
 										nbr_intersection2 += 1
@@ -750,12 +384,15 @@ for pageID in bbxs_dict:
 									curr_grp_to_test.append(bb2)
 									
 								nbr_bbxs = len(curr_grp_to_test)
+								
 								for bb_tmp1 in curr_grp_to_test:
 									nbr_intersection = -1
+									
 									for bb_tmp2 in curr_grp_to_test:
+										
 										if is_intersection_bb(bb_tmp1, bb_tmp2):
-											# ~ overlap = (overlap_percent(bb_tmp1, bb_tmp2) + overlap_percent(bb_tmp2, bb_tmp1) ) / 2
 											overlap = overlap_percent(bb_tmp1, bb_tmp2)
+											
 											if overlap >= args.min_overlap:
 												nbr_intersection += 1
 									
@@ -767,9 +404,11 @@ for pageID in bbxs_dict:
 							# Insert the couple in that group
 							if is_bbs_match:
 								is_couple_new = False
+								
 								if bb1 not in bbxs_grp:
 									bbxs_grp.append(bb1)
 									append_lists(original_bbxs_grp, original_bb_list[i1])
+								
 								if bb2 not in bbxs_grp:
 									bbxs_grp.append(bb2)
 									append_lists(original_bbxs_grp, original_bb_list[i2])
@@ -790,48 +429,13 @@ for pageID in bbxs_dict:
 			merged_bb_list = []
 			
 			for bbxs_grp in original_bbxs_grps:
-				# TODO: Memorize the bounding boxes that were used to merge ? when applying recursive algorithm...
-				# ~ merged_bb_score(bbxs_grp, line_dict[pageID], keyword)
 				
-				nbr_bb = len(bbxs_grp)
-				total += nbr_bb
-				n += 1
-				# ~ if nbr_bb > max_bbs:
-					# ~ print("-------------------------------------------")
-					# ~ print("pageID: " + pageID)
-					# ~ print("keyword: " + keyword)
-					# ~ print("N: " + str(nbr_bb))
-					# ~ max_bbs = nbr_bb
+				new_bb = merge_bb_group(bbxs_grp, keyword)
 				
-				new_bb = None
-				# Default, set the score equal to the maximum of overlapping BBs
-				if not args.eps != -1 and not args.complex and not args.total != -1:
-					# ~ new_bb = merge_bb_group(bbxs_grp)
-					new_bb = merge_bb_group_v2(bbxs_grp, keyword)
-				# Simple estimation of the missing probabilty by providing a constant value
-				elif args.eps != -1:
-					new_bb, total_score = merge_bb_group_missqty(bbxs_grp, line_dict[pageID], keyword, args.eps)
-					max_total = max(max_total, total_score)
-				# Complex method based on an heuristic to estimate the amount of noise missing
-				elif args.complex:
-					new_bb = merged_bb_score_fast(bbxs_grp, line_dict[pageID], keyword)
-				elif args.total != -1:
-					new_bb = new_bb, total_score = merge_bb_group_total_qty(bbxs_grp, line_dict[pageID], keyword, args.total)
 				merged_bb_list.append(new_bb)
 
 			bb_list = merged_bb_list
 			original_bb_list = bbxs_grps
-			
-			
-		
-		# Normalize the results
-		if string_to_boolean(args.normalize):
-			max_score = 0.0
-			for bb in bb_list:
-				max_score = max(max_score, bb.get_score())
-			
-			for bb in bb_list:
-				bb.set_score(bb.get_score() / max_score)
 		
 		
 		
@@ -851,12 +455,9 @@ for pageID in bbxs_dict:
 						if overlap > args.min_overlap:
 							beta_list.append(beta)
 			
-				score = scores_v2(b, beta_list, keyword)
+				score = scores(b, beta_list, keyword)
 			
 			line_to_write = pageID + ' ' + keyword + ' ' + str(score) + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) + '\n'
 			output.write(line_to_write)
 
 output.close()
-
-print("Total: " + str(total))
-print("n: " + str(n))

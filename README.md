@@ -7,4 +7,4 @@ A tutorial is available [here](https://github.com/kbarrere/LSF-PKWSI/tree/refact
 # Requierements
 
 xmlPAGE.py from [P2PaLA](https://github.com/lquirosd/P2PaLA) by Lorenzo Quirós Díaz.
-[directlink](https://github.com/lquirosd/P2PaLA/blob/master/page_xml/xmlPAGE.py)
+[direct link](https://github.com/lquirosd/P2PaLA/blob/master/page_xml/xmlPAGE.py)

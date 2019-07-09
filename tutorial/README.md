@@ -34,3 +34,16 @@ Briefly you will need to:
 * Apply an HTR architecture to obtain the characters' probabilities frame by frame, slice by slice
 * Create a character lattice from the probabilities
 * Obtain and index the best words
+
+To save time, you can use the provided index and corresponding xml file (I advice to use both provided since they might differ from what you created
+
+```
+cp test_material/RS_Aicha_vorm_Wald_031_0187.xml .
+cp test_material/RS_Aicha_vorm_Wald_031_0187.idx .
+```
+
+### **Step 3:** Time to merge !
+
+Now, the fun starts.
+
+Once you obtained your index corresponding to your given image and xml file, you'll need an additional step consolidating all the overlapping spots obtained with the spots.

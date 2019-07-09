@@ -25,3 +25,12 @@ python ../extract-lines/create_xml.py RS_Aicha_vorm_Wald_031_0187.jpg . --blur 2
 
 The parameters used here are tuned to fit the image (the corresponding dataset), you might try to change them.
 
+### **Step 2:** The indexing
+
+Well I have not been working on this step, so this is up to you !
+
+Briefly you will need to:
+* Obtain images from the slices with the xml file
+* Apply an HTR architecture to obtain the characters' probabilities frame by frame, slice by slice
+* Create a character lattice from the probabilities
+* Obtain and index the best words

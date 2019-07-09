@@ -54,7 +54,17 @@ Before merging, we convert the Bounding Boxes (BB) from a frame level directly o
 This will allow further preprocessing before merging.
 
 ```
-python ../scripts/convert_frames_to_pixels.py RS_Aicha_vorm_Wald_031_0187.idx RS_Aicha_vorm_Wald_031_0187.xml RS_Aicha_vorm_Wald_031_0187-px.idx
+python ../scripts/convert_frames_to_pixels.py RS_Aicha_vorm_Wald_031_0187.idx RS_Aicha_vorm_Wald_031_0187.xml px.idx
 ```
 
 #### Shorten the large BBs
+
+With our approach we sometime obtain very large BBs.
+Here we count the number of characters in the keyword and modify the shape of the BB based on this number and some statistics.
+This might have to be tuned.
+
+```
+python ../scripts/correct_bbxs_shape_pixels.py px.idx corrected.idx
+```
+
+

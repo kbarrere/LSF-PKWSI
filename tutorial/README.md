@@ -67,4 +67,24 @@ This might have to be tuned.
 python ../scripts/correct_bbxs_shape_pixels.py px.idx corrected.idx
 ```
 
+#### Merging finally !
 
+Now that we corrected the shapes, we can consolidated the raw BBs:
+
+```
+python ../scripts/merge_bbxs.py corrected.idx merged.idx
+```
+
+With the file _merged.idx_ you now have an index that you can use to make queries !
+
+Each line contains (in the following order):
+* Id of the page
+* Keyword
+* Probability
+* xmin
+* ymin
+* xmax
+* ymax
+
+You reach the end of the tutorial.
+However, Everything is not showcased here.

@@ -47,3 +47,7 @@ cp test_material/RS_Aicha_vorm_Wald_031_0187.idx .
 Now, the fun starts.
 
 Once you obtained your index corresponding to your given image and xml file, you'll need an additional step consolidating all the overlapping spots obtained with the spots.
+
+```
+python ../scripts/convert_frames_to_pixels.py RS_Aicha_vorm_Wald_031_0187.idx RS_Aicha_vorm_Wald_031_0187.xml RS_Aicha_vorm_Wald_031_0187-merged.idx
+```

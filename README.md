@@ -2,7 +2,7 @@
 
 An approach to remove the need for automatic textline extraction for Probabilistic Keyword Spotting and Indexing.
 
-A tutorial is available in 
+A tutorial is available [here](https://github.com/kbarrere/LSF-PKWSI/tree/refactor/tutorial#tutorial).
 
 # Requierements
 

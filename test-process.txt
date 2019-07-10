@@ -247,12 +247,12 @@ kws-assessment -a -m -t -s data_test.dat -w INF/keywords_test.lst -l 16376
 #######################################################################################
 
 # Convert indexes from line to page level
-# Require: https://github.com/kbarrere/KWS-Oversegmentation/blob/master/convert-lines-to-page/index_lines2page.py
+# Require: https://github.com/kbarrere/LSF-PKWSI/blob/master/convert-lines-to-page/index_lines2page.py
 
 python index_lines2page.py index_test.idx index_test-page.idx --id-list-file INF/ID_test-page.lst
 
 # Convert GroundTruth from line to page level
-# Require: https://github.com/kbarrere/KWS-Oversegmentation/blob/master/convert-lines-to-page/gt_lines2page.py
+# Require: https://github.com/kbarrere/LSF-PKWSI/blob/master/convert-lines-to-page/gt_lines2page.py
 
 python gt_lines2page.py INF/GT.txt INF/GT-page.txt --id-list-file INF/ID_test-page.lst
 

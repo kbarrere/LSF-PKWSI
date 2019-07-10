@@ -35,7 +35,9 @@ Briefly you will need to:
 * Create a character lattice from the probabilities
 * Obtain and index the best words
 
-To save time, you can use the provided index and corresponding xml file (I advice to use both provided since they might differ from what you created
+To save time, you can use the provided index and corresponding xml file (I advice to use both provided since they might differ from what you created.
+
+However, the steps are described in [test-process.txt](https://github.com/kbarrere/LSF-PKWSI/blob/master/others/test_shape.py)
 
 ```
 cp test_material/RS_Aicha_vorm_Wald_031_0187.xml .

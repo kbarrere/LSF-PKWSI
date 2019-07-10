@@ -1,6 +1,6 @@
 import cv2
 
-from compute_average_heigh import *
+from estimate_heigh import *
 from xmlPAGE import *
 
 

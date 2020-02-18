@@ -9,7 +9,7 @@ A tutorial is available [here](https://github.com/kbarrere/LSF-PKWSI/tree/refact
 xmlPAGE.py from [P2PaLA](https://github.com/lquirosd/P2PaLA) by Lorenzo Quirós Díaz.
 [direct link](https://github.com/lquirosd/P2PaLA/blob/master/page_xml/xmlPAGE.py)
 
-# Dcoumentation
+# Documentation
 
 Here, I will try to give a brief explanation of every scripts. The explanation is detailled in each subfolder
 
